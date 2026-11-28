@@ -77,6 +77,7 @@ def _write_tree_metadata(ctx, tree):
         ctx,
         source_purl("godot", tree["version"], sha256 = tree["sha256"]),
         "%s/LICENSE.txt" % ctx.path(ctx.attr.tree).dirname,
+        copyright = "%s/COPYRIGHT.txt" % ctx.path(ctx.attr.tree).dirname,
     )
 
 def _link_tree(ctx, path = ""):

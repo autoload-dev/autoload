@@ -9,6 +9,7 @@ Sections: Package URLs, Repository metadata.
 """
 
 load("@package_metadata//purl:purl.bzl", "purl")
+load(":copyright.bzl", "bundled_libraries", "words_of")
 
 visibility("//godot/...")
 
@@ -78,9 +79,16 @@ def source_purl(name, version = "", sha256 = "", integrity = ""):
 # The package that holds the metadata, apart from the packages the repository generates.
 _PACKAGE = "_package_metadata"
 
-_BUILD = """\
+# SBOM tools give each target of a build graph one package, the first of its package
+# metadata, so each bundled library has a target of its own that carries its metadata, and
+# the targets that hold the software depend on them through BUNDLED_PACKAGES. The targets
+# carry no files. The package's own targets carry no metadata.
+_HEADER = """\
 load({license_bzl}, "license")
+load({license_kind_bzl}, "license_kind")
 load({package_metadata_bzl}, "package_metadata")
+
+package(default_package_metadata = [])
 
 package_metadata(
     name = "package_metadata",
@@ -93,33 +101,134 @@ license(
     name = "license",
     kind = {kind},
 {text})
+
+filegroup(
+    name = "bundled_packages",
+    srcs = {packages},
+    visibility = ["//visibility:public"],
+)
+"""
+
+# A bundled library: the target that carries its package metadata, the metadata and its
+# license, whose text is the library's part of COPYRIGHT.txt.
+_LIBRARY = """
+filegroup(
+    name = "{name}",
+    package_metadata = [":{name}_metadata"],
+)
+
+package_metadata(
+    name = "{name}_metadata",
+    attributes = [":{name}_license"],
+    purl = {purl},
+)
+
+license(
+    name = "{name}_license",
+    kind = {kind},
+    text = "{name}.txt",
+)
+"""
+
+# Temporary exception: the license rule of package_metadata 0.0.15 takes one license kind,
+# not an SPDX expression, so a library under several licenses gets a kind whose identifier
+# is the expression, which the SPDX tools write as its declared license verbatim. Remove it
+# once a package_metadata release on the registry has license(expression = ...). A license
+# on no SPDX list is a LicenseRef kind, which needs a license_kind of its own anyway.
+_LICENSE_KIND = """
+license_kind(
+    name = "{name}_kind",
+    full_name = {full_name},
+    identifier = {identifier},
+)
 """
 
 # The label of the metadata, for a package of a repository that only some packages carry.
 PACKAGE_METADATA = "//%s:package_metadata" % _PACKAGE
 
-def write_package_metadata(repository_ctx, package_url, license_text = None, repository_wide = True):
+# The label of the targets that carry the metadata of the libraries the software bundles,
+# for the targets that hold the software; without any, it is empty.
+BUNDLED_PACKAGES = "//%s:bundled_packages" % _PACKAGE
+
+def _target_name(name, taken):
+    """A target name of a library's name, lower case with underscores, unique among taken."""
+    words = words_of("".join([character if character.isalnum() else " " for character in name.lower().elems()]))
+    base = "_".join(words)
+    target = base
+    for number in range(2, len(taken) + 2):
+        if target not in taken:
+            break
+        target = "%s_%d" % (base, number)
+    taken[target] = True
+    return target
+
+def _library(repository_ctx, library, name):
+    """Write the license text of a library Godot bundles and return its declarations."""
+    repository_ctx.file("%s/%s.txt" % (_PACKAGE, name), library.text, executable = False)
+    if " " not in library.spdx and not library.spdx.startswith("LicenseRef-"):
+        kind = repr(str(Label("@package_metadata//licenses/spdx:" + library.spdx)))
+        kind_declaration = ""
+    else:
+        kind = repr(":%s_kind" % name)
+        kind_declaration = _LICENSE_KIND.format(
+            name = name,
+            full_name = repr(library.license),
+            identifier = repr(library.spdx),
+        )
+    return _LIBRARY.format(
+        name = name,
+        purl = repr(purl.builder().type("generic").namespace("godot").name(library.name).build()),
+        kind = kind,
+    ) + kind_declaration
+
+def _libraries(repository_ctx, copyright):
+    """The declarations of the libraries a COPYRIGHT.txt lists and their target names."""
+    if not copyright or not repository_ctx.path(copyright).exists:
+        return [], []
+    declarations = []
+    taken = {}
+    for library in bundled_libraries(repository_ctx.read(copyright)):
+        declarations.append(_library(repository_ctx, library, _target_name(library.name, taken)))
+    return declarations, list(taken)
+
+def write_package_metadata(repository_ctx, package_url, license_text = None, copyright = None):
     """
-    Declare the package metadata of MIT-licensed software in a repository.
+    Declare the package metadata of MIT-licensed software for every target of a repository.
+
+    Writes the metadata package, as write_metadata_package does, and REPO.bazel, which no
+    repository of the ruleset writes otherwise and which gives every target of the
+    repository the metadata.
+
+    Args:
+        repository_ctx: Repository rule context.
+        package_url: The software's package URL, such as source_purl's.
+        license_text: Path of the software's license text, or None.
+        copyright: Path or label of the COPYRIGHT.txt of the Godot the software is, or None.
+    """
+    repository_ctx.file(
+        "REPO.bazel",
+        "repo(default_package_metadata = [%r])\n" % PACKAGE_METADATA,
+        executable = False,
+    )
+    write_metadata_package(repository_ctx, package_url, license_text, copyright)
+
+def write_metadata_package(repository_ctx, package_url, license_text = None, copyright = None):
+    """
+    Declare the package metadata of MIT-licensed software in a repository's own package.
 
     Writes the package `_package_metadata`, which holds the metadata and a copy of the
-    license text as LICENSE, and REPO.bazel, which no repository of the ruleset writes
-    otherwise and which gives every target of the repository the metadata.
+    license text as LICENSE; the packages that hold the software name PACKAGE_METADATA. With
+    a Godot COPYRIGHT.txt, each library it lists is a package of its own, which the targets
+    that name BUNDLED_PACKAGES carry.
 
     Args:
         repository_ctx: Repository rule context.
         package_url: The software's package URL, such as source_purl's.
         license_text: Path of the software's license text, or None; a missing file leaves
             the license without text.
-        repository_wide: Whether REPO.bazel gives the metadata to every target; otherwise
-            the packages that hold the software name PACKAGE_METADATA themselves.
+        copyright: Path or label of the COPYRIGHT.txt of the Godot whose libraries the
+            software bundles, or None; a missing file names none.
     """
-    if repository_wide:
-        repository_ctx.file(
-            "REPO.bazel",
-            "repo(default_package_metadata = [%r])\n" % PACKAGE_METADATA,
-            executable = False,
-        )
     if license_text and not repository_ctx.path(license_text).exists:
         license_text = None
     if license_text:
@@ -128,10 +237,14 @@ def write_package_metadata(repository_ctx, package_url, license_text = None, rep
             repository_ctx.read(license_text),
             executable = False,
         )
-    repository_ctx.file(_PACKAGE + "/BUILD.bazel", _BUILD.format(
+    libraries, names = _libraries(repository_ctx, copyright)
+    build = _HEADER.format(
         license_bzl = repr(str(Label("@package_metadata//licenses/rules:license.bzl"))),
+        license_kind_bzl = repr(str(Label("@package_metadata//licenses/rules:license_kind.bzl"))),
         package_metadata_bzl = repr(str(Label("@package_metadata//rules:package_metadata.bzl"))),
+        packages = repr([":" + name for name in names]),
         purl = repr(package_url),
         kind = repr(str(Label("@package_metadata//licenses/spdx:MIT"))),
         text = '    text = "LICENSE",\n' if license_text else "",
-    ), executable = False)
+    )
+    repository_ctx.file(_PACKAGE + "/BUILD.bazel", build + "".join(libraries), executable = False)

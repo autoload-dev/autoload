@@ -62,6 +62,7 @@ def _editor(pins, editor_platform, _fail):
             integrity = release[editor_platform],
             binary = layout.binary.format(tag = release["tag"]),
             layout = layout,
+            catalogued = True,
         )
     binaries = pins.binaries
     if editor_platform not in binaries.editor_integrity:
@@ -74,6 +75,7 @@ def _editor(pins, editor_platform, _fail):
         integrity = binaries.editor_integrity[editor_platform],
         binary = binary,
         layout = layout,
+        catalogued = False,
     )
 
 def _editor_platforms(pins):
@@ -102,6 +104,7 @@ def _pinned_templates(pins, _fail):
         integrity = binaries.templates_integrity,
         macos_cpus = binaries.templates_macos_cpus or ["universal"],
         linux_cpus = binaries.templates_linux_cpus or TEMPLATE_CPUS["linux"],
+        catalogued = False,
     )
 
 def _templates(pins, _fail):
@@ -124,6 +127,7 @@ def _templates(pins, _fail):
         integrity = release["templates"],
         macos_cpus = release["macos_cpus"],
         linux_cpus = release.get("linux_cpus", TEMPLATE_CPUS["linux"]),
+        catalogued = True,
     )
 
 # The Android shell AARs of an engine's binaries: the variant each serves and the prefix of
@@ -151,9 +155,9 @@ def _android_shells(pins):
     for variant, pin in _SHELL_PINS:
         urls = _pinned(pins, pin + "_urls")
         if urls:
-            shells[variant] = struct(pin = pin, urls = urls, integrity = _pinned(pins, pin + "_integrity"))
+            shells[variant] = struct(pin = pin, urls = urls, integrity = _pinned(pins, pin + "_integrity"), catalogued = False)
         elif pin in release:
-            shells[variant] = struct(pin = pin, **release[pin])
+            shells[variant] = struct(pin = pin, catalogued = True, **release[pin])
     return shells
 
 def _binaries_plan(engine, binaries, release, *, _fail = fail):
@@ -523,7 +527,11 @@ def runtime_profiles(modules, read):
 # target.
 _ARCHIVE_FILE = "export_templates.tpz"
 
-def _templates_declarations(engine, templates):
+def _copyright_of(part, copyright):
+    """The copyright attribute of a binary's repository: the catalogue's file for its binaries only."""
+    return {"copyright": copyright} if copyright and part.catalogued else {}
+
+def _templates_declarations(engine, templates, copyright):
     """
     Return the export-template repositories of an engine's binaries.
 
@@ -534,6 +542,7 @@ def _templates_declarations(engine, templates):
     Args:
         engine: The godot_engines.engine tag.
         templates: The templates of the engine's binaries plan, or False.
+        copyright: The label of the COPYRIGHT.txt the catalogue pins for the version, or None.
 
     Returns:
         The http_file declaration of the archive, then the godot_export_templates_archive
@@ -557,11 +566,12 @@ def _templates_declarations(engine, templates):
             version = engine.version,
             platform = platform,
             cpus = cpus,
+            **_copyright_of(templates, copyright)
         )
         for platform, cpus in [("linux", templates.linux_cpus), ("macos", templates.macos_cpus), ("ios", [])]
     ]
 
-def _editor_declarations(engine, editors):
+def _editor_declarations(engine, editors, copyright):
     return [
         _declaration(
             "godot_editor_archive",
@@ -570,6 +580,7 @@ def _editor_declarations(engine, editors):
             integrity = editor.integrity,
             binary = editor.binary,
             version = engine.version,
+            **_copyright_of(editor, copyright)
         )
         for editor_platform, editor in editors.items()
     ]
@@ -599,6 +610,60 @@ def _shell_declarations(engine, shells):
         ))
         android_runtimes[variant] = {"shell": "@%s//file" % name}
     return declarations, android_runtimes
+
+def _copyright_declarations(engine, release, plan):
+    """
+    Return the download of the COPYRIGHT.txt the catalogue pins for an engine's version.
+
+    Godot's official binaries come without its sources, so their repositories name the
+    libraries Godot bundles from this file. Pinned binaries are a fork's, and binaries of an
+    uncatalogued version have no file.
+
+    Args:
+        engine: The godot_engines.engine tag.
+        release: The catalogue's release of the engine's version, or None.
+        plan: The result of _binaries_plan.
+
+    Returns:
+        A tuple of the http_file declarations, none or one, and the label of the file or
+        None, which no catalogued binary then needs.
+    """
+    parts = plan.editors.values() + ([plan.templates] if plan.templates else []) + plan.android_shells.values()
+    copyright = (release or {}).get("copyright")
+    if not copyright or not [part for part in parts if part.catalogued]:
+        return [], None
+    name = engine.name + "_copyright"
+    return [_declaration(
+        "http_file",
+        name = name,
+        urls = copyright["urls"],
+        sha256 = copyright["sha256"],
+        downloaded_file_path = "COPYRIGHT.txt",
+    )], "@%s//file:COPYRIGHT.txt" % name
+
+def _binary_declarations(engine, release, plan):
+    """
+    Return the repositories of an engine's binaries and what its hub takes of them.
+
+    Args:
+        engine: The godot_engines.engine tag.
+        release: The catalogue's release of the engine's version, or None.
+        plan: The result of _binaries_plan.
+
+    Returns:
+        A struct of the declarations, the hub's Android runtimes by variant and the hub's
+        attributes for them: the COPYRIGHT.txt of catalogued shells, which they wrap.
+    """
+    shells, android_runtimes = _shell_declarations(engine, plan.android_shells)
+    declarations, copyright = _copyright_declarations(engine, release, plan)
+    declarations += _editor_declarations(engine, plan.editors, copyright)
+    declarations += _templates_declarations(engine, plan.templates, copyright) + shells
+    catalogued_shells = [shell for shell in plan.android_shells.values() if shell.catalogued]
+    return struct(
+        declarations = declarations,
+        android_runtimes = android_runtimes,
+        hub = {"copyright": copyright} if copyright and catalogued_shells else {},
+    )
 
 def _acquisition_error(engine, source, plan):
     """The error of an engine that has no editor, or a lock file but no sources; None otherwise."""
@@ -640,9 +705,10 @@ def _engine_declarations(selection, profiles, _fail):
     error = _acquisition_error(engine, source, plan)
     if error:
         return _fail(error)
-    shells, android_runtimes = _shell_declarations(engine, plan.android_shells)
+    binaries = _binary_declarations(engine, release, plan)
+    declarations = binaries.declarations
+    android_runtimes = binaries.android_runtimes
     slots = _binary_slots(engine, plan)
-    declarations = _editor_declarations(engine, plan.editors) + _templates_declarations(engine, plan.templates) + shells
     hub = dict(
         name = engine.name,
         display_name = engine.name,
@@ -650,6 +716,7 @@ def _engine_declarations(selection, profiles, _fail):
         default_engine = selection.default,
         toolchains_repository = TOOLCHAINS_REPOSITORY,
         version = engine.version,
+        **binaries.hub
     )
     if source:
         covered = {slot["name"]: True for slot in slots} | {"android_" + variant: True for variant in plan.android_shells}

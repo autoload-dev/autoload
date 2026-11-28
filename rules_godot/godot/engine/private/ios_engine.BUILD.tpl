@@ -11,6 +11,9 @@ apple_static_xcframework_import(
         ":ios_simulator": [],
         "//conditions:default": ["MetalFX"],
     }),
+    # The targets that carry the package metadata of the libraries Godot bundles; they add
+    # no files.
+    data = [{BUNDLED_PACKAGES}],
     xcframework_imports = glob(["{XCFRAMEWORK}/**"]),
     deps = {DEPS},
     alwayslink = False,

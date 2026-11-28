@@ -16,6 +16,7 @@ def _editor(*, tree = [_BINARY], **overrides):
             "integrity": _INTEGRITY,
             "version": "4.7.2",
             "binary": _BINARY,
+            "copyright": None,
             "_prebuilt_bzl": "@@//godot/engine/private:prebuilt.bzl",
             "_build_template": "editor_archive.BUILD.tpl",
         } | overrides,
@@ -43,6 +44,7 @@ def _test_editor_build_names_the_binary(env):
     env.expect.that_dict(templates[0].substitutions).contains_exactly({
         "{PREBUILT_BZL}": repr("@@//godot/engine/private:prebuilt.bzl"),
         "{BINARY}": repr(_BINARY),
+        "{BUNDLED_PACKAGES}": repr("//_package_metadata:bundled_packages"),
         "{DIGEST}": repr(_INTEGRITY),
     })
 

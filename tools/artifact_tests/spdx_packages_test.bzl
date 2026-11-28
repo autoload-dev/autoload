@@ -22,8 +22,9 @@ def spdx_packages_test(name, spdx, packages, tags = [], **kwargs):
         name = name,
         srcs = [Label(":inspect_spdx.py")],
         main = Label(":inspect_spdx.py"),
+        # Bazel splits args as a shell does; a license expression has spaces.
         args = ["$(rootpath %s)" % spdx] + [
-            "%s=%s" % (purl, packages[purl])
+            "'%s=%s'" % (purl, packages[purl])
             for purl in sorted(packages)
         ],
         data = [spdx],

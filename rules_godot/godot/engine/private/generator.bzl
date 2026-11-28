@@ -492,6 +492,9 @@ _SOURCE_ATTRS = {
         allow_single_file = True,
     ),
     "digest": attr.string(doc = "Source archive digest, such as sha256:<hex>."),
+    "bundled_packages": attr.label_list(
+        doc = "The targets that carry the package metadata of the libraries the engine's sources bundle; they add no files.",
+    ),
     "customizations": attr.string_list_dict(doc = "Requested patches, modules, custom_modules and options."),
     "renderers": attr.string_list(doc = "Rendering methods the engine runs, where declares_renderers is set."),
     "declares_renderers": attr.bool(doc = "Whether the recipe declares its renderers, so applications check their projects against them."),

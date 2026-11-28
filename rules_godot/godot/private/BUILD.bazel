@@ -474,7 +474,10 @@ bzl_library(
 bzl_library(
     name = "supply_chain",
     srcs = ["supply_chain.bzl"],
-    deps = ["@package_metadata//purl:srcs"],
+    deps = [
+        ":copyright",
+        "@package_metadata//purl:srcs",
+    ],
 )
 
 bzl_library(
@@ -497,6 +500,11 @@ bzl_library(
 bzl_library(
     name = "configuration",
     srcs = ["configuration.bzl"],
+)
+
+bzl_library(
+    name = "copyright",
+    srcs = ["copyright.bzl"],
 )
 
 bzl_library(

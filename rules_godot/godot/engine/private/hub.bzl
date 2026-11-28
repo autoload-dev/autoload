@@ -3,7 +3,7 @@ The generated repositories of engines: each engine's hub, one component per slot
 extension's toolchains repository of every engine's components.
 """
 
-load("//godot/private:supply_chain.bzl", "PACKAGE_METADATA", "source_purl", "write_package_metadata")
+load("//godot/private:supply_chain.bzl", "BUNDLED_PACKAGES", "PACKAGE_METADATA", "source_purl", "write_metadata_package")
 load("//godot/private/config:settings.bzl", "CPU_TABLE")
 
 visibility(["//godot/..."])
@@ -63,7 +63,11 @@ def _declaration(slot, engine, default_engine):
     return _call("godot_%s_component" % slot["role"], values + _engine_values(engine, default_engine))
 
 def _android_runtime(variant, runtime):
-    attributes = ["    name = %r," % variant, "    shell = %r," % runtime["shell"]]
+    attributes = [
+        "    name = %r," % variant,
+        "    shell = %r," % runtime["shell"],
+        "    bundled_packages = [%r]," % BUNDLED_PACKAGES,
+    ]
     if runtime.get("visibility"):
         attributes.append("    visibility = %r," % runtime["visibility"])
     engine_libraries = runtime.get("engine_libraries", {})
@@ -154,7 +158,7 @@ def _hub_impl(ctx):
     })
     android = json.decode(ctx.attr.android_runtimes) if ctx.attr.android_runtimes else {}
     if android:
-        write_package_metadata(ctx, source_purl("godot", ctx.attr.version), repository_wide = False)
+        write_metadata_package(ctx, source_purl("godot", ctx.attr.version), copyright = ctx.attr.copyright)
         ctx.template("android/BUILD.bazel", ctx.attr._android_template, substitutions = {
             "{ANDROID_BZL}": repr(str(ctx.attr._android_bzl)),
             "{PACKAGE_METADATA}": repr(PACKAGE_METADATA),
@@ -176,6 +180,7 @@ engine_hub = repository_rule(
         "engine": attr.string(doc = "Name of the engine every component belongs to; empty for the default engine."),
         "default_engine": attr.bool(doc = "Whether the named engine is also the default engine, which builds that name none take."),
         "version": attr.string(doc = "Godot version of the engine, which the package metadata of the hub's Android runtimes names."),
+        "copyright": attr.label(doc = "Godot's COPYRIGHT.txt of the version, whose libraries the package metadata of the hub's Android runtimes names; none without."),
         "toolchains_repository": attr.string(doc = "The extension's repository of every engine's toolchains, which registers the hub's components."),
         "android_runtimes": attr.string(doc = """
             JSON object of variant to {"shell": label, "engine_libraries": {CPU: label}};

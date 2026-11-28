@@ -4,6 +4,7 @@ load("//godot/engine/private/tests:engines.bzl", "editor_probe", "resolution_pro
 load("//godot/engine/private/tests:repository_test.bzl", "repository_test")
 load(":android_shell_tests.bzl", "android_shell_test_suite")
 load(":build_profile_tests.bzl", "PROFILE", "build_profile_test_suite", "profile_reader")
+load(":bundled_packages_tests.bzl", "bundled_packages_test_suite")
 load(":components_tests.bzl", "components_test_suite")
 load(":composition_tests.bzl", "composition_test_suite")
 load(":editor_archive_tests.bzl", "editor_archive_test_suite")
@@ -152,6 +153,8 @@ filegroup(
 android_shell_test_suite(name = "android_shell_test_suite")
 
 build_profile_test_suite(name = "build_profile_test_suite")
+
+bundled_packages_test_suite(name = "bundled_packages_test_suite")
 
 components_test_suite(name = "components_test_suite")
 

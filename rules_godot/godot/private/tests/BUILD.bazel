@@ -4,6 +4,7 @@ load("//godot/private/engine:setting_kinds.bzl", "SETTING_KIND_TABLES", "engine_
 load(":action_inputs_tests.bzl", "action_inputs_test_suite")
 load(":addon_tests.bzl", "addon_test_suite")
 load(":context_tests.bzl", "context_test_suite")
+load(":copyright_tests.bzl", "copyright_test_suite")
 load(":external_files_tests.bzl", "external_files_test_suite")
 load(":file_roles_tests.bzl", "file_roles_test_suite")
 load(":import_plugin_tests.bzl", "import_plugin_test_suite")
@@ -89,6 +90,8 @@ mocks_test_suite(name = "mocks_test_suite")
 patches_test_suite(name = "patches_test_suite")
 
 supply_chain_test_suite(name = "supply_chain_test_suite")
+
+copyright_test_suite(name = "copyright_test_suite")
 
 file_roles_test_suite(name = "file_roles_test_suite")
 

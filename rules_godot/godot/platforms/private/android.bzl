@@ -26,7 +26,7 @@ _ACTIVITY_DEPS = [
     Label("@maven//:androidx_core_core_splashscreen"),
 ]
 
-def _android_runtime_impl(name, visibility, shell, engine_library, **kwargs):
+def _android_runtime_impl(name, visibility, shell, engine_library, bundled_packages, **kwargs):
     # Unset common attributes stay unset on rules_android's aar_import.
     kwargs = {key: value for key, value in kwargs.items() if value != None}
     aar = shell
@@ -48,7 +48,15 @@ def _android_runtime_impl(name, visibility, shell, engine_library, **kwargs):
             **common_kwargs(kwargs)
         )
         aar = ":" + name + ".engine_aar"
-    aar_import(name = name, aar = aar, deps = _SHELL_DEPS, visibility = visibility, **kwargs)
+    aar_import(
+        name = name,
+        aar = aar,
+        # Carries no files: the SBOM aspect reaches the bundled packages through it.
+        data = bundled_packages,
+        deps = _SHELL_DEPS,
+        visibility = visibility,
+        **kwargs
+    )
 
 godot_android_runtime = macro(
     doc = """
@@ -84,6 +92,9 @@ godot_android_runtime = macro(
         ),
         "engine_library": attr.label(
             doc = "Optional engine library .so target of the current platform slice.",
+        ),
+        "bundled_packages": attr.label_list(
+            doc = "The targets that carry the package metadata of the libraries the shell's Godot bundles; they add no files.",
         ),
     },
 )

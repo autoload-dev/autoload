@@ -28,6 +28,10 @@ def _editor_impl(ctx):
         runfiles = ctx.runfiles(transitive_files = files),
     ), PrebuiltArtifactInfo(digest = ctx.attr.digest)]
 
+_BUNDLED_PACKAGES_ATTR = attr.label_list(
+    doc = "The targets that carry the package metadata of the libraries the archive's Godot bundles; they add no files.",
+)
+
 prebuilt_editor = rule(
     doc = "An archived editor executable with the rest of its archive as runfiles.",
     implementation = _editor_impl,
@@ -36,6 +40,7 @@ prebuilt_editor = rule(
         "binary": attr.label(mandatory = True, allow_single_file = True),
         "data": attr.label_list(allow_files = True),
         "digest": attr.string(doc = "Integrity digest of the editor archive."),
+        "bundled_packages": _BUNDLED_PACKAGES_ATTR,
     },
 )
 
@@ -81,5 +86,6 @@ prebuilt_runtime = rule(
         "version": attr.string(mandatory = True),
         "variant": attr.string(default = "release", values = ["debug", "release"]),
         "digest": attr.string(doc = "Integrity digest of the archive the template came from."),
+        "bundled_packages": _BUNDLED_PACKAGES_ATTR,
     },
 )

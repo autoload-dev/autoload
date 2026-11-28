@@ -2,6 +2,7 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/engine/private:source_repositories.bzl", "engine_build_impl", "profile_options")
+load("//godot/private/tests:copyright_excerpt.bzl", "COPYRIGHT_EXCERPT")
 load("//godot/private/tests:mocks.bzl", "mocks")
 
 visibility("private")
@@ -88,18 +89,23 @@ def _tree_json():
         "digest": "0" * 64,
     })
 
-# Godot's license text in the engine tree, beside its descriptor.
+# Godot's license text and COPYRIGHT.txt in the engine tree, beside its descriptor.
 _LICENSE = mocks.path(_TREE).dirname + "/LICENSE.txt"
+_COPYRIGHT = mocks.path(_TREE).dirname + "/COPYRIGHT.txt"
 
 def _paths(path):
     """Bazel's paths: a struct for the tree descriptor, whose directory the recipe links."""
     mapping = path or str
-    return lambda value: mocks.path(value) if str(value) in (str(_TREE), _LICENSE) else mapping(value)
+    return lambda value: mocks.path(value) if str(value) in (str(_TREE), _LICENSE, _COPYRIGHT) else mapping(value)
 
 def _build(*, execute = {}, path = None, environ = {}, files = {}, tree = None, **overrides):
     ctx = mocks.repository_ctx(
         attr = _ATTRS | overrides,
-        files = {str(_TREE): tree or _tree_json(), _LICENSE: "Copyright (c) Godot Engine contributors."} | files,
+        files = {
+            str(_TREE): tree or _tree_json(),
+            _LICENSE: "Copyright (c) Godot Engine contributors.",
+            _COPYRIGHT: COPYRIGHT_EXCERPT,
+        } | files,
         execute = execute,
         path = _paths(path),
         environ = environ,
@@ -175,11 +181,9 @@ def _test_configure_command_carries_the_recipe(env):
             "execute",
             "execute",
             "delete",
-            "file",
-            "file",
-            "file",
-            "file",
-        ],
+            # REPO.bazel, the license text, the four bundled libraries' texts and the
+            # metadata's BUILD file, then WORKSPACE.bazel.
+        ] + ["file"] * 8,
     ).in_order()
     env.expect.that_str(mocks.calls(ctx, "delete")[0].path).equals(".scons_env.json")
 
@@ -210,6 +214,11 @@ def _test_configure_command_carries_the_recipe(env):
         "REPO.bazel",
         "_package_metadata/LICENSE",
         "_package_metadata/BUILD.bazel",
+        # The libraries the tree's COPYRIGHT.txt lists, each a package of its own.
+        "_package_metadata/bullet_continuous_collision_detection_and_physics_library.txt",
+        "_package_metadata/servers_audio_effects_audio_effect_pitch_shift_cpp.txt",
+        "_package_metadata/smol_v.txt",
+        "_package_metadata/zlib.txt",
     ])
 
 # A recipe holds its generated files and links the engine tree's sources hard: no recipe

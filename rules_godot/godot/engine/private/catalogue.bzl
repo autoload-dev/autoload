@@ -10,8 +10,10 @@ TEMPLATE_CPUS = {
     "android": ["arm32", "arm64", "x86_32", "x86_64"],
 }
 
-# Release tag, editor platforms, macOS template layout and archive digests per version, and
-# the release's source archive, which builds the runtime slots its official artifacts lack.
+# Release tag, editor platforms, macOS template layout and archive digests per version, the
+# release's source archive, which builds the runtime slots its official artifacts lack, and
+# the COPYRIGHT.txt of the release's commit, whose bundled libraries the package metadata of
+# the official artifacts names: they come without Godot's sources.
 RELEASES = {
     "4.7.2": {
         "tag": "4.7.2-stable",
@@ -34,6 +36,10 @@ RELEASES = {
             "strip_prefix": "godot-4.7.2-stable",
             "version": "4.7.2",
         },
+        "copyright": {
+            "urls": ["https://raw.githubusercontent.com/godotengine/godot/ed1daf0bf001b61586d9930840f2f1394092c079/COPYRIGHT.txt"],
+            "sha256": "cb1980c88089573bcacd7221d777c689bb8bbd778799f24c27fca0fe5f774d6d",
+        },
     },
     "4.8.0-beta1": {
         "tag": "4.8-beta1",
@@ -54,6 +60,10 @@ RELEASES = {
             "sha256": "6d49c02e438935e49a12231d857b2b56131948b004d5b668bf295c9bc3b2281c",
             "strip_prefix": "godot-4.8-beta1",
             "version": "4.8.0-beta",
+        },
+        "copyright": {
+            "urls": ["https://raw.githubusercontent.com/godotengine/godot/4d10419cacd6d3009976e8f9fd3abd970fd58018/COPYRIGHT.txt"],
+            "sha256": "d5aeff0741d5cb7a566befd8867667549c8bb46399a0e93091273b632bbefd96",
         },
     },
 }
