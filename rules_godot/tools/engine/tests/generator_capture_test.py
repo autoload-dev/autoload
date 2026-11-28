@@ -3,9 +3,9 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from tools.engine.configure import (
+from tools.engine.configure import is_directory_action
+from tools.engine.generator_inputs import (
     include_closure,
-    is_directory_action,
     normalize_value,
     scalar_environment,
 )

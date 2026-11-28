@@ -39,22 +39,26 @@ _ATTRS = {
     "renderers": [],
     "build_options": {},
     "build_name": "custom",
-    "_configure": "tools/engine/configure.py",
+    "_configure": "rules_godot/tools/engine/configure.py",
+    "_compile_options": "rules_godot/tools/engine/compile_options.py",
+    "_generator_inputs": "rules_godot/tools/engine/generator_inputs.py",
+    "_lock": "rules_godot/tools/engine/lock.py",
+    "_recipe_options": "rules_godot/tools/engine/recipe_options.py",
     "_python": _PYTHON,
-    "_module_graph": "tools/engine/module_graph.py",
-    "_include_graph": "tools/engine/include_graph.py",
-    "_render": "tools/engine/render.py",
-    "_build_profile": "tools/engine/build_profile.py",
-    "_define_analysis": "tools/engine/define_analysis.py",
-    "_source_tree": "tools/engine/source_tree.py",
-    "_variants": "tools/engine/variants.py",
-    "_generators": "tools/engine/generators.py",
-    "_build_file": "tools/engine/build_file.py",
-    "_custom_modules": "tools/engine/custom_modules.py",
-    "_tree": "tools/engine/tree.py",
-    "_tree_link": "tools/engine/tree_link.py",
-    "_class_db": "tools/engine/class_db.py",
-    "_patches": "tools/engine/patches.py",
+    "_module_graph": "rules_godot/tools/engine/module_graph.py",
+    "_include_graph": "rules_godot/tools/engine/include_graph.py",
+    "_render": "rules_godot/tools/engine/render.py",
+    "_build_profile": "rules_godot/tools/engine/build_profile.py",
+    "_define_analysis": "rules_godot/tools/engine/define_analysis.py",
+    "_source_tree": "rules_godot/tools/engine/source_tree.py",
+    "_variants": "rules_godot/tools/engine/variants.py",
+    "_generators": "rules_godot/tools/engine/generators.py",
+    "_build_file": "rules_godot/tools/engine/build_file.py",
+    "_custom_modules": "rules_godot/tools/engine/custom_modules.py",
+    "_tree": "rules_godot/tools/engine/tree.py",
+    "_tree_link": "rules_godot/tools/engine/tree_link.py",
+    "_class_db": "rules_godot/tools/engine/class_db.py",
+    "_patches": "rules_godot/tools/engine/patches.py",
     "_build_profile_label": "@@//godot/private:build_profile_label",
     "_generator": "@@//godot/engine/private:generator.bzl",
     "_cc_rules": "@@rules_cc+//cc:cc_library.bzl",
@@ -67,6 +71,13 @@ _ATTRS = {
     "repin": "",
     "runtime_profiles": {},
 }
+
+# The recipe watches each of its .py tool attributes once, so the count follows them.
+_TOOL_WATCHES = ["watch"] * len([
+    path
+    for path in _ATTRS.values()
+    if type(path) == "string" and path.endswith(".py")
+])
 
 def _tree_json():
     return json.encode({
@@ -99,7 +110,7 @@ def _build(*, execute = {}, path = None, environ = {}, files = {}, tree = None, 
 
 def _configure(ctx):
     """The configure call."""
-    calls = [call for call in mocks.calls(ctx, "execute") if call.args[1:2] == ["tools/engine/configure.py"]]
+    calls = [call for call in mocks.calls(ctx, "execute") if call.args[1:4] == ["-P", "-m", "tools.engine.configure"]]
     return calls[0] if calls else None
 
 def _options(arguments):
@@ -108,7 +119,9 @@ def _options(arguments):
 # The configure command of the recipe _test_configure_command_carries_the_recipe declares.
 _CONFIGURE_COMMAND = [
     _PYTHON,
-    "tools/engine/configure.py",
+    "-P",
+    "-m",
+    "tools.engine.configure",
     "--source",
     ".",
     "--scons",
@@ -157,7 +170,7 @@ def _test_configure_command_carries_the_recipe(env):
     )
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 15 + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
+        _TOOL_WATCHES + ["getenv"] * len(_CONFIGURE_ENVIRONMENT) + [
             "watch",
             "execute",
             "execute",
@@ -174,7 +187,9 @@ def _test_configure_command_carries_the_recipe(env):
     # covers the patches.
     env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly([
         _PYTHON,
-        "tools/engine/tree_link.py",
+        "-P",
+        "-m",
+        "tools.engine.tree_link",
         "--tree",
         _TREE_DIRECTORY,
         "--recipe",
@@ -203,16 +218,16 @@ def _test_a_recipe_links_its_engine_tree(env):
     ctx, errors = _build()
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly(
-        [_PYTHON, "tools/engine/tree_link.py", "--tree", _TREE_DIRECTORY, "--recipe", ".", "--path", "", "--patch-strip", "1"],
+        [_PYTHON, "-P", "-m", "tools.engine.tree_link", "--tree", _TREE_DIRECTORY, "--recipe", ".", "--path", "", "--patch-strip", "1"],
     ).in_order()
     env.expect.that_collection([call.path for call in mocks.calls(ctx, "watch")]).contains_at_least([
-        "tools/engine/tree.py",
-        "tools/engine/tree_link.py",
-        "tools/engine/class_db.py",
+        "rules_godot/tools/engine/tree.py",
+        "rules_godot/tools/engine/tree_link.py",
+        "rules_godot/tools/engine/class_db.py",
     ])
 
 def _test_a_failed_link_fails(env):
-    ctx, errors = _build(execute = {_PYTHON + " tools/engine/tree_link.py": {"return_code": 1, "stderr": "denied"}})
+    ctx, errors = _build(execute = {_PYTHON + " -P -m tools.engine.tree_link": {"return_code": 1, "stderr": "denied"}})
     env.expect.that_collection(errors).contains_exactly([
         "godot_linux_x86_64_template_release: linking the engine tree failed:\n\ndenied",
     ])
@@ -290,10 +305,10 @@ def _test_custom_modules_configure_by_structure(env):
     ctx, errors = _build(
         custom_modules = {_RIVE: "rive"},
         path = _module_paths(listings),
-        execute = {_PYTHON + " tools/engine/custom_modules.py": {"stdout": _PREPARED}},
+        execute = {_PYTHON + " -P -m tools.engine.custom_modules": {"stdout": _PREPARED}},
     )
     env.expect.that_collection(errors).contains_exactly([])
-    prepare = [call for call in mocks.calls(ctx, "execute") if call.args[1] == "tools/engine/custom_modules.py"][0]
+    prepare = [call for call in mocks.calls(ctx, "execute") if call.args[3] == "tools.engine.custom_modules"][0]
     env.expect.that_str(prepare.args[-1]).equals("@@//third_party/rive:rive")
     env.expect.that_str(prepare.args[-3]).equals("rive")
 
@@ -334,7 +349,7 @@ def _test_ios_recipe_without_environment_fails(env):
         'godot_ios_arm64_template_release: iOS recipes need environment = "device" or "simulator"',
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 15,
+        _TOOL_WATCHES,
     )
 
 def _test_environment_outside_ios_recipe_fails(env):
@@ -343,7 +358,7 @@ def _test_environment_outside_ios_recipe_fails(env):
         "godot_linux_x86_64_template_release: environment is only valid for iOS recipes",
     ])
     env.expect.that_collection([call.method for call in ctx.calls]).contains_exactly(
-        ["watch"] * 15,
+        _TOOL_WATCHES,
     )
 
 # Configuration runs rules_python's interpreter, whatever Python the host's PATH has.
@@ -356,10 +371,14 @@ def _test_rules_python_runs_configure(env):
 def _test_a_fixed_timeout_bounds_configure(env):
     ctx, errors = _build()
     env.expect.that_collection(errors).contains_exactly([])
-    env.expect.that_dict(_configure(ctx).kwargs).contains_exactly({"timeout": 1800, "quiet": True})
+    env.expect.that_dict(_configure(ctx).kwargs).contains_exactly({
+        "environment": {"PYTHONPATH": "rules_godot"},
+        "timeout": 1800,
+        "quiet": True,
+    })
 
 def _test_failed_configure_fails(env):
-    ctx, errors = _build(execute = {_PYTHON + " tools/engine/configure.py": {"return_code": 1, "stdout": "out", "stderr": "err"}})
+    ctx, errors = _build(execute = {_PYTHON + " -P -m tools.engine.configure": {"return_code": 1, "stdout": "out", "stderr": "err"}})
     env.expect.that_collection(errors).contains_exactly(["Godot graph configuration failed:\nout\nerr"])
     env.expect.that_collection(mocks.calls(ctx, "file")).contains_exactly([])
 

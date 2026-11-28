@@ -159,11 +159,18 @@ bzl_library(
     name = "source_repositories",
     srcs = ["source_repositories.bzl"],
     deps = [
+        ":engine_tools",
         "//godot/private:supply_chain",
         "//godot/private:versions",
         "//godot/private/config:settings",
         "//godot/private/engine:profiles",
     ],
+)
+
+bzl_library(
+    name = "tree_repository",
+    srcs = ["tree_repository.bzl"],
+    deps = [":engine_tools"],
 )
 
 bzl_library(
@@ -177,6 +184,11 @@ bzl_library(
 )
 
 bzl_library(
+    name = "engine_tools",
+    srcs = ["engine_tools.bzl"],
+)
+
+bzl_library(
     name = "resolution",
     srcs = ["resolution.bzl"],
 )
@@ -184,9 +196,4 @@ bzl_library(
 bzl_library(
     name = "selection",
     srcs = ["selection.bzl"],
-)
-
-bzl_library(
-    name = "tree_repository",
-    srcs = ["tree_repository.bzl"],
 )

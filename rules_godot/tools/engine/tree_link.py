@@ -23,14 +23,9 @@ from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-try:
-    from . import class_db
-    from .patches import Patches, apply_patches, touched
-    from .tree import entries
-except ImportError:
-    import class_db
-    from patches import Patches, apply_patches, touched
-    from tree import entries
+from tools.engine import class_db
+from tools.engine.patches import Patches, apply_patches, touched
+from tools.engine.tree import entries
 
 # ==== Links ===================================================================
 

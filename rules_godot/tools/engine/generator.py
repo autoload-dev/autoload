@@ -10,16 +10,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-try:
-    from .build_profile import build_options, class_list_spec, read_profile
-except ImportError:
-    # Run as a binary, the tool imports its sibling modules from its own directory.
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from build_profile import (
-        build_options,
-        class_list_spec,
-        read_profile,
-    )
+from tools.engine.build_profile import build_options, class_list_spec, read_profile
 
 
 class Value:

@@ -7,18 +7,20 @@ from typing import Any
 
 from tools.engine.build_profile import class_list_spec
 from tools.engine.configure import (
+    inputs_hash,
+    require_expected_version,
+    require_host_platform,
+    source_version,
+    version_name,
+)
+from tools.engine.recipe_options import (
     check_options,
     customizations,
-    inputs_hash,
     profile_options_digest,
     requested_modules,
     require_consistent_profile,
-    require_expected_version,
-    require_host_platform,
     require_known_options,
     require_one_text_server,
-    source_version,
-    version_name,
 )
 
 

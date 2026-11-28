@@ -19,7 +19,7 @@ def _tree(*, execute = {_PYTHON: {"stdout": _DIGEST + "\n"}}, **overrides):
             "name": "godot_tree",
             "source": _SOURCE,
             "_python": _PYTHON,
-            "_tree": "tools/engine/tree.py",
+            "_tree": "rules_godot/tools/engine/tree.py",
         } | overrides,
         files = {str(_SOURCE): json.encode({
             "archive": "source.tar.gz",
@@ -53,8 +53,13 @@ def _test_the_tree_is_the_archive_with_scons(env):
     env.expect.that_str(extract.stripPrefix).equals("godot-4.7.2-stable")
     env.expect.that_str(mocks.calls(ctx, "download_and_extract")[0].output).equals("_scons")
     env.expect.that_collection(mocks.calls(ctx, "execute")[0].args).contains_exactly(
-        [_PYTHON, "tools/engine/tree.py", "--root", "."],
+        [_PYTHON, "-P", "-m", "tools.engine.tree", "--root", "."],
     ).in_order()
+
+    # The tool runs as a module of the ruleset, whose root holds tools/.
+    env.expect.that_dict(mocks.calls(ctx, "execute")[0].kwargs["environment"]).contains_exactly(
+        {"PYTHONPATH": "rules_godot"},
+    )
     env.expect.that_str(_files(ctx)["BUILD.bazel"]).equals('exports_files(["tree.json"])\n')
 
     # The digest-pinned archive determines the tree.

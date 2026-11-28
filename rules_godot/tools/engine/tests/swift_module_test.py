@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.engine.configure import merge_swift_module_options, swift_module_options
+from tools.engine.compile_options import merge_swift_module_options, swift_module_options
 
 
 class SwiftModuleTest(unittest.TestCase):

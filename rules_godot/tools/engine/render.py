@@ -13,40 +13,20 @@ from collections.abc import Collection, Container, Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any, NamedTuple
 
-try:
-    from . import build_profile, custom_modules, define_analysis, variants
-    from .build_file import Constants, Plus, Rule, write
-    from .class_db import DEFINE, is_scoped
-    from .generators import generated_files, generator_rules, spec_path
-    from .include_graph import (
-        ANY_HEADER,
-        CompileGroup,
-        Generated,
-        TreeCache,
-        components,
-        include_graph,
-        reached_directories,
-    )
-    from .source_tree import write_json
-except ImportError:
-    import build_profile
-    import custom_modules
-    import define_analysis
-    import variants
-    from build_file import Constants, Plus, Rule, write
-    from class_db import DEFINE, is_scoped
-    from generators import generated_files, generator_rules, spec_path
-    from include_graph import (
-        ANY_HEADER,
-        CompileGroup,
-        Generated,
-        TreeCache,
-        components,
-        include_graph,
-        reached_directories,
-    )
-    from source_tree import write_json
-
+from tools.engine import build_profile, custom_modules, define_analysis, variants
+from tools.engine.build_file import Constants, Plus, Rule, write
+from tools.engine.class_db import DEFINE, is_scoped
+from tools.engine.generators import generated_files, generator_rules, spec_path
+from tools.engine.include_graph import (
+    ANY_HEADER,
+    CompileGroup,
+    Generated,
+    TreeCache,
+    components,
+    include_graph,
+    reached_directories,
+)
+from tools.engine.source_tree import write_json
 
 # ==== Build facts =============================================================
 
