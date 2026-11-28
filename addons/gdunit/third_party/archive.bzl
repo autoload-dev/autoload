@@ -23,18 +23,31 @@ def github_archive(*, owner, repository, version, urls, strip_prefix = "", **att
         version: The release tag or commit the archive holds.
         urls: Its download URLs, where `{version}` stands for version; each one names it.
         strip_prefix: Its top-level directory, where `{version}` stands for version.
-        **attrs: The other attributes of its http_archive, such as sha256 and build_file.
+        **attrs: The other attributes of its http_archive, such as build_file, with its
+            sha256 or integrity, which pins it.
 
     Returns:
         A struct with the archive's version, its package URL `purl` and the `attrs` of
         its http_archive.
     """
+    project = owner + "/" + repository
+    if not version:
+        fail("%s: the archive declares no version" % project)
     unversioned = [url for url in urls if _VERSION not in url]
     if unversioned:
-        fail("%s/%s: the URL %s does not name {version}" % (owner, repository, unversioned[0]))
+        fail("%s: the URL %s does not name {version}" % (project, unversioned[0]))
+    if "sha256" not in attrs and "integrity" not in attrs:
+        fail("%s: the archive declares no sha256 or integrity" % project)
     return struct(
         version = version,
-        purl = purl.builder().type("github").namespace(owner).name(repository).version(version).build(),
+        purl = (
+            purl.builder()
+                .type("github")
+                .namespace(owner)
+                .name(repository)
+                .version(version)
+                .build()
+        ),
         attrs = attrs | {
             "urls": [url.replace(_VERSION, version) for url in urls],
             "strip_prefix": strip_prefix.replace(_VERSION, version),

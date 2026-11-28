@@ -119,10 +119,23 @@ def _test_version_names_archive_and_package(env):
         "https://codeload.github.com/godotengine/godot-cpp/tar.gz/10.1.0-stable",
     ])
     env.expect.that_str(download.stripPrefix).equals("godot-cpp-10.1.0-stable")
-    metadata = [call for call in mocks.calls(ctx, "file") if call.path == "_package_metadata/BUILD.bazel"]
+    metadata = [
+        call
+        for call in mocks.calls(ctx, "file")
+        if call.path == "_package_metadata/BUILD.bazel"
+    ]
     env.expect.that_str(metadata[0].content).contains(
         repr("pkg:generic/godot-cpp@10.1.0-stable?checksum=sha256:" + "ab" * 32),
     )
+
+def _test_url_without_version_fails(env):
+    url = "https://example.com/godot-cpp.tar.gz"
+    ctx, errors = _bindings(urls = [url])
+    env.expect.that_collection(errors).contains_exactly([
+        "godot_cpp_bindings: the URL %s does not name {version}" % url,
+    ])
+    downloads = mocks.calls(ctx, "download_and_extract")
+    env.expect.that_collection(downloads).contains_exactly([])
 
 def _test_bits_and_precision_reach_the_bindings(env):
     ctx, errors = _bindings(bits = "32", precision = "double")
@@ -218,6 +231,7 @@ def godot_cpp_bindings_test_suite(name):
         basic_tests = [
             _test_api_path_selects_the_api,
             _test_version_names_archive_and_package,
+            _test_url_without_version_fails,
             _test_bits_and_precision_reach_the_bindings,
             _test_debug_features_define_debug_macros,
             _test_enabled_classes_keep_ancestors,

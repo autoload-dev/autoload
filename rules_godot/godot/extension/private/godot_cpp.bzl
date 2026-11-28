@@ -16,15 +16,25 @@ visibility(["//godot/extension/..."])
 GODOT_CPP_COMMIT = "507ed9d840c01a3c5b2a39af8bb4000bfac30bf5"
 GODOT_CPP_SHA256 = "30da4ac295997061a6af81ae531510efd4e6a86e506eb4466edc0898ef3fe048"
 
-def _download(ctx):
-    """Fetch the archive of the version, which replaces `{version}` in its URLs and prefix."""
+def _download(ctx, _fail):
+    """
+    Fetch the archive of the version, which replaces `{version}` in its URLs and prefix.
+
+    Every URL names `{version}`, so that the package URL's version is the one downloaded.
+    Returns whether it fetched the archive.
+    """
     version = ctx.attr.version
+    unversioned = [url for url in ctx.attr.urls if "{version}" not in url]
+    if unversioned:
+        _fail("godot_cpp_bindings: the URL %s does not name {version}" % unversioned[0])
+        return False
     ctx.download_and_extract(
         url = [url.replace("{version}", version) for url in ctx.attr.urls],
         sha256 = ctx.attr.sha256,
         stripPrefix = ctx.attr.strip_prefix.replace("{version}", version),
         type = "tar.gz",
     )
+    return True
 
 def godot_cpp_bindings_impl(ctx, *, _fail = fail):
     """
@@ -37,7 +47,8 @@ def godot_cpp_bindings_impl(ctx, *, _fail = fail):
     Returns:
         The repository's metadata: reproducible when the archive is checksum-pinned.
     """
-    _download(ctx)
+    if not _download(ctx, _fail):
+        return None
     if not apply_repository_patches(ctx, _fail = _fail):
         return None
     api = json.decode(ctx.read(ctx.attr.api_path))

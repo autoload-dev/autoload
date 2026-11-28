@@ -45,8 +45,9 @@ godot_cpp_bindings = repository_rule(
         ),
         "urls": attr.string_list(
             doc = """
-            Ordered download URLs for the same checksum-pinned archive, where `{version}`
-            stands for version.
+            Ordered download URLs for the same checksum-pinned archive. Each names
+            `{version}`, which stands for version, so that the package metadata names the
+            version downloaded.
             """,
             default = ["https://codeload.github.com/godotengine/godot-cpp/tar.gz/{version}"],
         ),

@@ -140,7 +140,7 @@ class SharedFilesTest(RepositoryTestCase):
         self.assertIn("def github_archive(", shared[archive])
         self.assertIn(
             "archive_versions_test(",
-            shared[Path("addons/widget/tests/third_party/BUILD.bazel")],
+            shared[Path("addons/widget/tests/archives/BUILD.bazel")],
         )
 
     def test_every_shared_file_is_one_of_the_template(self) -> None:

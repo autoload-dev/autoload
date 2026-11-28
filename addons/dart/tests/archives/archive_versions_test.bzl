@@ -27,13 +27,18 @@ def archive_versions_test(name, archives, **kwargs):
 
     Args:
         name: Name of the test.
-        archives: The module's archives, `github_archive` structs by their repositories' names.
+        archives: The module's archives, `github_archive` structs by their repositories'
+            names.
         **kwargs: Attributes of the test, such as size.
     """
     failures = []
     for repository, archive in archives.items():
         failures += [
-            "%s: the URL %s does not carry the version %s" % (repository, url, archive.version)
+            "%s: the URL %s does not carry the version %s" % (
+                repository,
+                url,
+                archive.version,
+            )
             for url in archive.attrs["urls"]
             if archive.version not in url
         ]

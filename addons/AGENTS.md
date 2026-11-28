@@ -41,7 +41,7 @@ The conventions check enforces it (the add-on module rules of
 - Third-party archives: `third_party/archives.bzl` declares each with `github_archive`, its
   version once, from which its URLs and its PURL are built, and exports the extension
   `archives` that MODULE.bazel uses to fetch them. A module that declares archives gets the
-  shared `third_party/archive.bzl`, the helper, and `tests/third_party/`, which tests that
+  shared `third_party/archive.bzl`, the helper, and `tests/archives/`, which tests that
   the URLs and the PURL carry the version.
 - `.bcr/addons/<module>/`, outside the module: the templates publish-to-bcr reads for a
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the

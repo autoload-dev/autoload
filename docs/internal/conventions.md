@@ -544,7 +544,7 @@ the generator's module template are settings every module shares: `.bazelignore`
 `source.template.json` and `metadata.template.json` in `.bcr/addons/<module>/`. So are the
 module's copy of the repository's `LICENSE` and, in a module that declares third-party
 archives in `third_party/archives.bzl`, the helper `third_party/archive.bzl` and the test of
-the archives' versions in `tests/third_party/`. They are
+the archives' versions in `tests/archives/`. They are
 listed in [tools/addons/new.py](../../tools/addons/new.py) and stay as the generator writes
 them, so a change of the template or of the ruleset's metadata reaches every module:
 `aspect generate` writes them again for every add-on module, and the check compares each with

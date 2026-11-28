@@ -7,7 +7,10 @@ def _license_texts_test_impl(ctx):
     texts = []
     checks = []
     for target in ctx.attr.package_licenses:
-        files = target[PackageAttributeInfo].files.to_list()
+        info = target[PackageAttributeInfo]
+
+        # Besides the text, the files hold the attribute's own JSON description.
+        files = [file for file in info.files.to_list() if file != info.attributes]
         texts += files
         checks.append("check %s %s" % (
             shell.quote(str(target.label)),
@@ -29,7 +32,10 @@ check() {{
 }}
 {checks}
 exit "$status"
-""".format(expected = shell.quote(ctx.file.expected.short_path), checks = "\n".join(checks)))
+""".format(
+        expected = shell.quote(ctx.file.expected.short_path),
+        checks = "\n".join(checks),
+    ))
     return [DefaultInfo(
         executable = script,
         runfiles = ctx.runfiles(files = texts + [ctx.file.expected]),
