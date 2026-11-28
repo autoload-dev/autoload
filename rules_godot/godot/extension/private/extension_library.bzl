@@ -6,6 +6,8 @@ Sections: Provider and shared attributes, Library linking.
 """
 
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
+load("@rules_apple//apple:aspects.bzl", "framework_provider_aspect")
+load("@rules_apple//apple:providers.bzl", "AppleFrameworkImportInfo")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("//godot/private:macros.bzl", "CALLER_PACKAGE")
@@ -20,6 +22,7 @@ GodotExtensionLibraryInfo = provider(
     fields = {
         "entry_symbol": "string: the GDExtension entry symbol, the only symbol the library exports",
         "library": "Target: the shared library, framework import or archive of this configuration",
+        "frameworks": "list of AppleFrameworkImportInfo of the dynamic frameworks the code links, which iOS applications embed; empty elsewhere",
     },
 )
 
@@ -141,7 +144,11 @@ def _extension_library_rule_impl(ctx):
     library = ctx.attr.library
     return [
         DefaultInfo(files = library[DefaultInfo].files, runfiles = library[DefaultInfo].default_runfiles),
-        GodotExtensionLibraryInfo(entry_symbol = ctx.attr.entry_symbol, library = library),
+        GodotExtensionLibraryInfo(
+            entry_symbol = ctx.attr.entry_symbol,
+            library = library,
+            frameworks = [code[AppleFrameworkImportInfo] for code in ctx.attr.code if AppleFrameworkImportInfo in code],
+        ),
     ]
 
 _extension_library = rule(
@@ -150,6 +157,11 @@ _extension_library = rule(
     attrs = {
         "library": attr.label(doc = "The linked library of this configuration.", mandatory = True),
         "entry_symbol": attr.string(doc = "The library's GDExtension entry symbol.", mandatory = True),
+        "code": attr.label_list(
+            doc = "The library's archive on iOS, whose linked frameworks applications embed.",
+            # rules_apple's framework aspect stops at the extension, which hands these on.
+            aspects = [framework_provider_aspect],
+        ),
     },
 )
 
@@ -204,6 +216,10 @@ def _godot_extension_library_impl(
         library = select({
             Label("@platforms//os:ios"): ":" + ios_library,
             "//conditions:default": ":" + shared,
+        }),
+        code = select({
+            Label("@platforms//os:ios"): [":" + archive],
+            "//conditions:default": [],
         }),
         entry_symbol = entry_symbol,
         visibility = visibility,

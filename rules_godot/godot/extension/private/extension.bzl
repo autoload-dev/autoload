@@ -50,7 +50,10 @@ def _require_minimum_os_versions(minimum_os_versions):
 
 def _resolved_library(ctx, target):
     """
-    Return the target that supplies the configured library, and the entry symbol.
+    Return the configured library's target, entry symbol and linked frameworks.
+
+    The frameworks are the AppleFrameworkImportInfo of those a godot_extension_library's
+    code links.
 
     A godot_extension_library carries its entry symbol. A library from any other rule, or
     a prebuilt file, carries none, so the extension names it.
@@ -64,10 +67,10 @@ def _resolved_library(ctx, target):
                 info.entry_symbol,
                 target.label,
             ))
-        return info.library, info.entry_symbol
+        return info.library, info.entry_symbol, info.frameworks
     if not ctx.attr.entry_symbol:
         fail("%s: %s carries no entry symbol; name it with entry_symbol" % (ctx.label, target.label))
-    return target, ctx.attr.entry_symbol
+    return target, ctx.attr.entry_symbol, []
 
 def _write_descriptor(ctx, descriptor, configured, entry_symbol):
     """Write the descriptor fragment with the entries of configured, a configured_library or None."""
@@ -97,7 +100,7 @@ def _write_descriptor(ctx, descriptor, configured, entry_symbol):
         },
     )
 
-def _library_providers(ctx, target, library):
+def _library_providers(ctx, target, library, linked_frameworks):
     """Return the providers that expose the library's C++ graph and frameworks; none without a library."""
     if not library:
         return []
@@ -122,7 +125,7 @@ def _library_providers(ctx, target, library):
             target[AppleFrameworkImportInfo]
             for target in sources
             if AppleFrameworkImportInfo in target
-        ]))
+        ] + linked_frameworks))
     return providers
 
 def _extension_impl(ctx):
@@ -137,11 +140,12 @@ def _extension_impl(ctx):
     configured = None
     target = None
     entry_symbol = ctx.attr.entry_symbol
+    linked_frameworks = []
     resource_paths = {}
 
     # A label attribute with a Starlark transition arrives as a list, empty for None.
     if ctx.attr.library:
-        target, entry_symbol = _resolved_library(ctx, ctx.attr.library[0])
+        target, entry_symbol, linked_frameworks = _resolved_library(ctx, ctx.attr.library[0])
         configured = configured_library(ctx, target, prefix, library_context(ctx))
         resource_paths = {resource: descriptor} | configured.resource_paths
     elif ctx.files.data:
@@ -171,7 +175,7 @@ def _extension_impl(ctx):
     if tool_view:
         # Used by itself, the extension is an add-on of only that extension.
         providers.append(extension_addon(ctx.label, extension))
-    return providers + _library_providers(ctx, target, library)
+    return providers + _library_providers(ctx, target, library, linked_frameworks)
 
 _OWN_ATTRS = {
     "library": attr.label(
