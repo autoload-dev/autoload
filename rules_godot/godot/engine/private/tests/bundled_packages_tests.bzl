@@ -24,7 +24,7 @@ _TREE = Label("//godot/engine/private/tests:tree.json")
 
 def _repository(files = {}, **attr):
     ctx = mocks.repository_ctx(
-        attr = {"name": "godot_bundled_packages", "copyright": None, "tree": None} | attr,
+        attr = {"name": "godot_bundled_packages", "urls": [], "sha256": "", "tree": None} | attr,
         files = files,
         tree = [],
     )
@@ -42,20 +42,24 @@ def _test_a_trees_libraries_come_from_its_copyright(env):
     env.expect.that_collection(errors).contains_exactly([])
     env.expect.that_collection(_written(ctx)).contains_at_least(["BUILD.bazel", "zlib.txt"])
 
-# The repository of a catalogued release reads the file the catalogue pins.
+# The repository of a catalogued release downloads the file the catalogue pins.
 def _test_a_releases_libraries_come_from_the_pinned_file(env):
     ctx, errors = _repository(
-        files = {"@@godot_copyright//file:COPYRIGHT.txt": COPYRIGHT_EXCERPT},
-        copyright = "@@godot_copyright//file:COPYRIGHT.txt",
+        files = {"COPYRIGHT.txt": COPYRIGHT_EXCERPT},
+        urls = ["https://example.com/COPYRIGHT.txt"],
+        sha256 = "cb" * 32,
     )
     env.expect.that_collection(errors).contains_exactly([])
+    downloads = mocks.calls(ctx, "download")
+    env.expect.that_collection(downloads).has_size(1)
+    env.expect.that_str(downloads[0].sha256).equals("cb" * 32)
     env.expect.that_collection(_written(ctx)).contains_at_least(["BUILD.bazel", "zlib.txt"])
 
 def _test_exactly_one_source_is_required(env):
-    for attr in [{}, {"copyright": "@@godot_copyright//file:COPYRIGHT.txt", "tree": _TREE}]:
+    for attr in [{}, {"urls": ["https://example.com/COPYRIGHT.txt"], "tree": _TREE}]:
         ctx, errors = _repository(**attr)
         env.expect.where(attr = attr).that_collection(errors).contains_exactly([
-            "godot_bundled_packages: set exactly one of copyright and tree",
+            "godot_bundled_packages: set exactly one of urls and tree",
         ])
         env.expect.where(attr = attr).that_collection(_written(ctx)).contains_exactly([])
 
@@ -92,7 +96,7 @@ def _the_editor_carries_the_bundled_libraries(env, target):
     env.expect.that_collection(labels).contains("@@%s//_package_metadata:package_metadata" % target.label.repo_name)
 
     # The libraries, of thirdparty/ and of Godot's modules, are the release's repository's.
-    names = [label.rpartition(":")[2] for label in labels if "_bundled_packages//:" in label]
+    names = [label.rpartition(":")[2] for label in labels if "godot_release_packages_" in label]
     env.expect.that_collection(names).contains_at_least([
         "zlib.metadata",
         "the_freetype_project.metadata",
