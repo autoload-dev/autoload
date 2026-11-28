@@ -17,6 +17,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -24,21 +25,37 @@ from typing import Any
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
 
+from godot.platforms.private.tests.engine_probe.beta_probe import (
+    BETA_COMMIT,
+    check_cpp_configuration,
+    cpp_descriptor,
+    single_library,
+    source_build_manifest,
+)
 from tools.digest import digest
 from tools.pack.pck import pck_contents
 from tools.platforms.apple_bundle import application_bundle, bundle_identity
 from tools.platforms.validate_artifacts import command
 
-BETA_COMMIT = "4d10419cacd6d3009976e8f9fd3abd970fd58018"
 CPP_ENTRY = "_example_library_init"
 ACCESSKIT_ENTRIES = ["_accesskit_node_new", "_accesskit_ios_subclassing_adapter_new"]
 
 
 def check_mode(kind: str, environment: str, package: bool) -> None:
-    if not package and (kind != "official" or environment != "device"):
+    if not package and (kind, environment) != ("official", "device"):
         raise ValueError(
             "Separate executable validation is restricted to the official device link"
         )
+
+
+def check_cpp_descriptor(descriptor: configparser.ConfigParser) -> None:
+    check_cpp_configuration(descriptor, CPP_ENTRY.removeprefix("_"))
+    single_library(
+        descriptor,
+        {"ios", "arm64"},
+        ".a",
+        "godot-cpp descriptor must retain one nonempty iOS arm64 static .a path",
+    )
 
 
 def check_pack(data: bytes) -> dict[str, Any]:
@@ -47,32 +64,7 @@ def check_pack(data: bytes) -> dict[str, Any]:
         raise ValueError(
             "Beta IPA must contain a Godot 4.8.0 PCK, got " + pack["godot_version"]
         )
-    descriptor = configparser.ConfigParser(interpolation=None)
-    path = "native/cpp_example.gdextension"
-    if path not in pack["extension_descriptors"]:
-        raise ValueError("Beta IPA has no godot-cpp extension descriptor")
-    descriptor.read_string(pack["extension_descriptors"][path])
-    if json.loads(descriptor["configuration"]["entry_symbol"]) != CPP_ENTRY.removeprefix(
-        "_"
-    ):
-        raise ValueError("godot-cpp descriptor names an unexpected entry symbol")
-    if json.loads(descriptor["configuration"]["compatibility_minimum"]) != "4.7.2":
-        raise ValueError(
-            "The Beta example must retain its Godot 4.7.2 extension compatibility minimum"
-        )
-    libraries = [
-        json.loads(value)
-        for tags, value in descriptor["libraries"].items()
-        if {"ios", "arm64"}.issubset(tags.split("."))
-    ]
-    if (
-        len(libraries) != 1
-        or not libraries[0].startswith("res://")
-        or not libraries[0].endswith(".a")
-    ):
-        raise ValueError(
-            "godot-cpp descriptor must retain one nonempty iOS arm64 static .a path"
-        )
+    check_cpp_descriptor(cpp_descriptor(pack, "IPA"))
     if any(
         path.removeprefix("res://").startswith("native/bin/") for path in pack["paths"]
     ):
@@ -83,14 +75,17 @@ def check_pack(data: bytes) -> dict[str, Any]:
     return pack
 
 
+# The platform values of LC_BUILD_VERSION for each environment, as numbers or names.
+PLATFORMS = {"device": {"2", "IOS"}, "simulator": {"7", "IOSSIMULATOR"}}
+
+
 def check_sdk(commands: str, environment: str) -> str:
     blocks = re.findall(
         r"cmd LC_BUILD_VERSION\b(.*?)(?=Load command|\Z)", commands, flags=re.DOTALL
     )
     values = [re.search(r"\bplatform\s+(\S+)", block) for block in blocks]
     sdks = [match[1] for match in values if match]
-    allowed = {"2", "IOS"} if environment == "device" else {"7", "IOSSIMULATOR"}
-    if len(sdks) != 1 or sdks[0] not in allowed:
+    if len(sdks) != 1 or sdks[0] not in PLATFORMS[environment]:
         raise ValueError("Mach-O SDK does not match the expected iOS " + environment)
     if "cmd LC_MAIN" not in commands:
         raise ValueError("iOS executable is missing the SwiftUI main entry point")
@@ -109,20 +104,26 @@ def check_bootstrap(plist: dict[str, Any]) -> None:
         raise ValueError("Godot iOS app is missing its SwiftUI scene manifest")
 
 
+# The version string of each engine kind: its status and its build origin.
+VERSION_PATTERNS = {
+    "official": rb"4\.8\.beta1\.official",
+    "source": rb"4\.8\.beta(?:1)?\.custom",
+}
+
+# The custom module and the engine-name patch that the source build applies.
+SOURCE_PATCHES = [b"BazelProbe", b"Godot Engine with Bazel patch"]
+
+
 def engine_version(data: bytes, kind: str) -> str:
-    status = rb"beta1" if kind == "official" else rb"beta(?:1)?"
-    origin = b"official" if kind == "official" else b"custom"
-    pattern = rb"4\.8\." + status + rb"\." + origin
-    version = re.search(pattern, data)
+    version = re.search(VERSION_PATTERNS[kind], data)
     # A source-built engine names its version hash instead of the commit; the hash covers
     # the pinned beta1 archive.
-    if version is None or kind == "official" and BETA_COMMIT.encode() not in data:
+    names_commit = kind != "official" or BETA_COMMIT.encode() in data
+    if version is None or not names_commit:
         raise ValueError(
             "iOS engine bytes do not identify the selected Godot 4.8-beta1 commit and engine kind"
         )
-    if kind == "source" and (
-        b"BazelProbe" not in data or b"Godot Engine with Bazel patch" not in data
-    ):
+    if kind == "source" and not all(patch in data for patch in SOURCE_PATCHES):
         raise ValueError(
             "iOS source-built engine must contain the custom module and engine-name patch"
         )
@@ -153,34 +154,10 @@ def accesskit_symbols(library: Path, directory: Path) -> tuple[str, list[str]]:
     return "\n".join(definitions), members
 
 
-def source_build_manifest(path: Path) -> dict:
-    """Return the source-built engine's manifest after checking what it was built from."""
-    manifest = json.loads(path.read_text())
-    if (
-        manifest.get("version") not in {"4.8.0-beta", "4.8.0-beta1"}
-        or manifest.get("platform") != "ios"
-    ):
-        raise ValueError(
-            "Source-built engine manifest does not describe Godot 4.8 Beta for iOS"
-        )
-    if "bazel_probe" not in manifest.get("selected_modules", []):
-        raise ValueError(
-            "Source-built engine manifest is missing the custom bazel_probe module"
-        )
-    if not manifest.get("build_profile_scoped"):
-        raise ValueError(
-            "Every source of the source-built engine sees the build profile: its "
-            "class_db.h no longer matches tools/engine/build_profile.py"
-        )
-    return manifest
-
-
-def verify(args: argparse.Namespace) -> dict[str, Any]:
-    check_mode(args.kind, args.expected_environment, args.artifact is not None)
-    # Read the actual selected engine libraries. A source-built engine consists
-    # of multiple per-configuration archives; no empty wrapper archive qualifies.
+def selected_libraries(paths: list[Path]) -> tuple[list[dict[str, Any]], bytes]:
+    """Return the selected engine libraries' facts and their joined bytes."""
     libraries, library_bytes = [], []
-    for path in args.engine_library:
+    for path in paths:
         data = path.read_bytes()
         cpus = command(["/usr/bin/xcrun", "lipo", "-archs", path]).split()
         if "arm64" not in cpus:
@@ -194,130 +171,177 @@ def verify(args: argparse.Namespace) -> dict[str, Any]:
             }
         )
         library_bytes.append(data)
-    archive_version = engine_version(b"".join(library_bytes), args.kind)
+    return libraries, b"".join(library_bytes)
+
+
+@dataclass(frozen=True)
+class Linked:
+    """The files of a linked iOS executable; app is None for a separate device link."""
+
+    app: Path | None
+    plist: dict[str, Any]
+    executable: Path
+    pck: Path
+
+
+def linked(args: argparse.Namespace, temporary: Path) -> Linked:
+    if not args.artifact:
+        return Linked(
+            app=None,
+            plist=plistlib.loads(args.plist.read_bytes()),
+            executable=args.binary,
+            pck=args.pack,
+        )
+    app = application_bundle(args.artifact, temporary)
+    plist = plistlib.loads((app / "Info.plist").read_bytes())
+    executable_name = plist["CFBundleExecutable"]
+    if Path(executable_name).name != executable_name:
+        raise ValueError("Unsafe application executable name")
+    return Linked(
+        app=app,
+        plist=plist,
+        executable=app / executable_name,
+        pck=app / (executable_name + ".pck"),
+    )
+
+
+def check_executable(executable: Path, environment: str) -> tuple[list[str], str]:
+    """Check the executable's slice and SDK, and return its CPUs and platform build."""
+    cpus = command(["/usr/bin/xcrun", "lipo", "-archs", executable]).split()
+    if cpus != ["arm64"]:
+        raise ValueError("Beta iOS validation expects an arm64 executable")
+    commands = command(["/usr/bin/xcrun", "otool", "-l", executable])
+    return cpus, check_sdk(commands, environment)
+
+
+def check_linked_symbols(executable: Path, data: bytes) -> None:
+    exports = command(["/usr/bin/xcrun", "dyld_info", "-exports", executable])
+    check_export(exports, CPP_ENTRY)
+    check_export(exports, "_rules_godot_library_init")
+    if b"BazelNode" not in data:
+        raise ValueError("Linked godot-cpp BazelNode implementation is absent")
+    undefined = command(["/usr/bin/xcrun", "nm", "-u", executable])
+    if re.search(r"\b_accesskit_", undefined):
+        raise ValueError("Linked iOS app still has unresolved AccessKit FFI symbols")
+
+
+def check_accesskit(
+    library: Path | None, executable: Path, temporary: Path
+) -> dict[str, Any]:
+    """Check that the executable links AccessKit's FFI implementations."""
+    if library is None:
+        raise ValueError(
+            "Official iOS validation requires the selected AccessKit archive"
+        )
+    accesskit_definitions, members = accesskit_symbols(library, temporary)
+    # The linker hides AccessKit's static FFI definitions. Local `t`
+    # symbols still prove that upstream implementations were linked.
+    definitions = command(["/usr/bin/xcrun", "nm", "-U", executable])
+    for entry in ACCESSKIT_ENTRIES:
+        check_export(accesskit_definitions, entry)
+        check_export(definitions, entry)
+    return {
+        "path": str(library),
+        "sha256": digest(library),
+        "inspected_crate_objects": members,
+        "defined_ffi_symbols": ACCESSKIT_ENTRIES,
+    }
+
+
+def verify_signature(app: Path | None) -> str:
+    """Verify an application's code signature, and say what was verified."""
+    if app is None:
+        return "Not performed: device executable link, not a signed application package"
+    signed = subprocess.run(
+        ["/usr/bin/codesign", "--verify", "--deep", "--strict", app],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if signed.returncode != 0:
+        raise ValueError(
+            "iOS code signature verification failed: " + signed.stdout + signed.stderr
+        )
+    return "codesign --verify --deep --strict passed"
+
+
+def separate_resources(args: argparse.Namespace) -> dict[str, str]:
+    return {
+        "pck": str(args.pack),
+        "pck_sha256": digest(args.pack),
+        "bootstrap_plist": str(args.plist),
+        "bootstrap_plist_sha256": digest(args.plist),
+    }
+
+
+def verify(args: argparse.Namespace) -> dict[str, Any]:
+    check_mode(args.kind, args.expected_environment, args.artifact is not None)
+    # Read the actual selected engine libraries. A source-built engine consists
+    # of multiple per-configuration archives; no empty wrapper archive qualifies.
+    libraries, library_bytes = selected_libraries(args.engine_library)
+    archive_version = engine_version(library_bytes, args.kind)
     with tempfile.TemporaryDirectory(prefix="godot-ios-beta-") as temporary:
-        temporary = Path(temporary)
-        app = None
-        if args.artifact:
-            app = application_bundle(args.artifact, temporary)
-            plist = plistlib.loads((app / "Info.plist").read_bytes())
-            executable_name = plist["CFBundleExecutable"]
-            if Path(executable_name).name != executable_name:
-                raise ValueError("Unsafe application executable name")
-            executable = app / executable_name
-            pck = app / (executable_name + ".pck")
-        else:
-            executable = args.binary
-            plist = plistlib.loads(args.plist.read_bytes())
-            pck = args.pack
-        executable_bytes = executable.read_bytes()
+        files = linked(args, Path(temporary))
+        executable_bytes = files.executable.read_bytes()
         version = engine_version(executable_bytes, args.kind)
         if version != archive_version:
             raise ValueError(
                 "Linked iOS engine version does not match the selected engine archives"
             )
-        cpus = command(["/usr/bin/xcrun", "lipo", "-archs", executable]).split()
-        if cpus != ["arm64"]:
-            raise ValueError("Beta iOS validation expects an arm64 executable")
-        commands = command(["/usr/bin/xcrun", "otool", "-l", executable])
-        platform_build = check_sdk(commands, args.expected_environment)
-        check_bootstrap(plist)
-        exports = command(["/usr/bin/xcrun", "dyld_info", "-exports", executable])
-        check_export(exports, CPP_ENTRY)
-        check_export(exports, "_rules_godot_library_init")
-        if b"BazelNode" not in executable_bytes:
-            raise ValueError("Linked godot-cpp BazelNode implementation is absent")
-        undefined = command(["/usr/bin/xcrun", "nm", "-u", executable])
-        if re.search(r"\b_accesskit_", undefined):
-            raise ValueError("Linked iOS app still has unresolved AccessKit FFI symbols")
+        cpus, platform_build = check_executable(
+            files.executable, args.expected_environment
+        )
+        check_bootstrap(files.plist)
+        check_linked_symbols(files.executable, executable_bytes)
         accesskit = None
         if args.kind == "official":
-            if args.accesskit_library is None:
-                raise ValueError(
-                    "Official iOS validation requires the selected AccessKit archive"
-                )
-            accesskit_definitions, members = accesskit_symbols(
-                args.accesskit_library, temporary
+            accesskit = check_accesskit(
+                args.accesskit_library, files.executable, Path(temporary)
             )
-            # The linker hides AccessKit's static FFI definitions. Local `t`
-            # symbols still prove that upstream implementations were linked.
-            definitions = command(["/usr/bin/xcrun", "nm", "-U", executable])
-            for entry in ACCESSKIT_ENTRIES:
-                check_export(accesskit_definitions, entry)
-                check_export(definitions, entry)
-            accesskit = {
-                "path": str(args.accesskit_library),
-                "sha256": digest(args.accesskit_library),
-                "inspected_crate_objects": members,
-                "defined_ffi_symbols": ACCESSKIT_ENTRIES,
-            }
-        pack = check_pack(pck.read_bytes())
-        if app is None:
-            signature = (
-                "Not performed: device executable link, not a signed application package"
-            )
-        else:
-            signed = subprocess.run(
-                ["/usr/bin/codesign", "--verify", "--deep", "--strict", app],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if signed.returncode == 0:
-                signature = "codesign --verify --deep --strict passed"
-            else:
-                raise ValueError(
-                    "iOS code signature verification failed: "
-                    + signed.stdout
-                    + signed.stderr
-                )
-        artifact = args.artifact or args.binary
-        sha256, size = bundle_identity(artifact)
-        result = {
-            "validated_at_utc": datetime.now(UTC).isoformat(),
-            "operating_system": "ios",
-            "engine_kind": args.kind,
-            "artifact": str(artifact),
-            "artifact_kind": "ios_application"
-            if args.artifact
-            else "device_executable_link",
-            "package_validated": args.artifact is not None,
-            "sha256": sha256,
-            "size_bytes": size,
-            "binary": {
-                "cpus": cpus,
-                "environment": args.expected_environment,
-                "platform_build": platform_build,
-                "sha256": hashlib.sha256(executable_bytes).hexdigest(),
-                "engine_version_string": version,
-            },
-            "engine_commit": BETA_COMMIT,
-            "selected_engine_libraries": libraries,
-            "pck": pack,
-            "godot_cpp": {
-                "release": "10.0.0-stable",
-                "api": "4.7",
-                "compatibility_minimum": "4.7.2",
-                "static_entry_exported": CPP_ENTRY,
-                "class_implementation": "BazelNode",
-            },
-            "swiftui_scene_manifest_present": True,
-            "signature_verification": signature,
-            "unresolved_accesskit_symbols": [],
-            "device_execution": False,
-            "simulator_launch": False,
-        }
-        if app is None:
-            result["separate_resources"] = {
-                "pck": str(pck),
-                "pck_sha256": digest(pck),
-                "bootstrap_plist": str(args.plist),
-                "bootstrap_plist_sha256": digest(args.plist),
-            }
-        if accesskit:
-            result["accesskit"] = accesskit
+        pack = check_pack(files.pck.read_bytes())
+        signature = verify_signature(files.app)
+    artifact = args.artifact or args.binary
+    sha256, size = bundle_identity(artifact)
+    result = {
+        "validated_at_utc": datetime.now(UTC).isoformat(),
+        "operating_system": "ios",
+        "engine_kind": args.kind,
+        "artifact": str(artifact),
+        "artifact_kind": "ios_application" if args.artifact else "device_executable_link",
+        "package_validated": args.artifact is not None,
+        "sha256": sha256,
+        "size_bytes": size,
+        "binary": {
+            "cpus": cpus,
+            "environment": args.expected_environment,
+            "platform_build": platform_build,
+            "sha256": hashlib.sha256(executable_bytes).hexdigest(),
+            "engine_version_string": version,
+        },
+        "engine_commit": BETA_COMMIT,
+        "selected_engine_libraries": libraries,
+        "pck": pack,
+        "godot_cpp": {
+            "release": "10.0.0-stable",
+            "api": "4.7",
+            "compatibility_minimum": "4.7.2",
+            "static_entry_exported": CPP_ENTRY,
+            "class_implementation": "BazelNode",
+        },
+        "swiftui_scene_manifest_present": True,
+        "signature_verification": signature,
+        "unresolved_accesskit_symbols": [],
+        "device_execution": False,
+        "simulator_launch": False,
+    }
+    if files.app is None:
+        result["separate_resources"] = separate_resources(args)
+    if accesskit:
+        result["accesskit"] = accesskit
     if args.engine_manifest:
-        result["engine_manifest"] = source_build_manifest(args.engine_manifest)
+        result["engine_manifest"] = source_build_manifest(
+            args.engine_manifest, "ios", "iOS"
+        )
     return result
 
 

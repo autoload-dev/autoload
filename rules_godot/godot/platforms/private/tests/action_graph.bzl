@@ -115,6 +115,16 @@ def mentions(action, text, contents):
         for file in action.inputs.to_list()
     ])
 
+def _first_inputs(action, actions):
+    """Record an action the first time the closure reaches it, and return its inputs then."""
+    if action == None:
+        return []
+    key = action.outputs.to_list()[0].path
+    if key in actions:
+        return []
+    actions[key] = action
+    return action.inputs.to_list()
+
 def bundle_closure(target):
     """
     Return what the target's default outputs are built from.
@@ -126,10 +136,11 @@ def bundle_closure(target):
         struct(files, actions): the short paths of every file the default outputs depend
         on through the reached actions, and those actions.
     """
-    producers = {}
-    for entry in reached(target):
-        for output in entry.action.outputs.to_list():
-            producers[output.path] = entry.action
+    producers = {
+        output.path: entry.action
+        for entry in reached(target)
+        for output in entry.action.outputs.to_list()
+    }
     pending = target[DefaultInfo].files.to_list()
     seen = {}
     files = {}
@@ -144,13 +155,7 @@ def bundle_closure(target):
             continue
         seen[file.path] = True
         files[file.short_path] = True
-        action = producers.get(file.path)
-        if action == None:
-            continue
-        key = action.outputs.to_list()[0].path
-        if key not in actions:
-            actions[key] = action
-            pending.extend(action.inputs.to_list())
+        pending.extend(_first_inputs(producers.get(file.path), actions))
     return struct(files = files, actions = actions.values())
 
 def _without_configuration(text):
@@ -161,6 +166,27 @@ def _without_configuration(text):
 # Compile actions whose inputs Bazel extends with discovered headers after they run.
 _DISCOVERS_INPUTS = ["CppCompile", "ObjcCompile"]
 _HEADER_EXTENSIONS = ["h", "hh", "hpp", "hxx", "inc", "inl", "ipp", "tcc"]
+
+def _compared_inputs(action):
+    inputs = action.inputs.to_list()
+    if action.mnemonic not in _DISCOVERS_INPUTS:
+        return inputs
+
+    # After a compile has run in this Bazel server, its inputs also list the headers
+    # it read, so headers are left out; argv and sources still decide the comparison.
+    return [file for file in inputs if file.extension not in _HEADER_EXTENSIONS]
+
+def _action_key(action, contents):
+    inputs = _compared_inputs(action)
+    return json.encode({
+        "argv": [_without_configuration(argument) for argument in action.argv or []],
+        "inputs": sorted([file.short_path for file in inputs]),
+        "written": sorted([
+            _without_configuration(contents[file.path])
+            for file in inputs
+            if file.path in contents
+        ]),
+    })
 
 def _action_keys(target, selected):
     """
@@ -181,28 +207,11 @@ def _action_keys(target, selected):
     """
     entries = reached(target)
     contents = written_contents(entries)
-    keys = {}
-    for entry in entries:
-        action = entry.action
-        if not selected(entry):
-            continue
-        outputs = sorted([file.short_path for file in action.outputs.to_list()])
-        inputs = action.inputs.to_list()
-        if action.mnemonic in _DISCOVERS_INPUTS:
-            # After a compile has run in this Bazel server, its inputs also list the headers
-            # it read, so headers are left out; argv and sources still decide the comparison.
-            inputs = [file for file in inputs if file.extension not in _HEADER_EXTENSIONS]
-        name = "%s %s %s" % (entry.owner, action.mnemonic, outputs)
-        keys[name] = json.encode({
-            "argv": [_without_configuration(argument) for argument in action.argv or []],
-            "inputs": sorted([file.short_path for file in inputs]),
-            "written": sorted([
-                _without_configuration(contents[file.path])
-                for file in inputs
-                if file.path in contents
-            ]),
-        })
-    return keys
+    return {
+        "%s %s %s" % (entry.owner, entry.action.mnemonic, sorted([file.short_path for file in entry.action.outputs.to_list()])): _action_key(entry.action, contents)
+        for entry in entries
+        if selected(entry)
+    }
 
 def expect_same_actions(env, first, second, selected):
     """

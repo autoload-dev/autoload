@@ -6,46 +6,69 @@ from pathlib import Path
 
 from tools.project.statements import statement_groups
 
+# A descriptor's values by section and key.
+Entries = dict[tuple[str, str], str]
 
-def merge_descriptors(descriptors: list[tuple[str, str]]) -> str:
-    """Union the descriptors' entries, requiring identical configuration and overlap."""
-    merged: dict[tuple[str, str], str] = {}
-    configuration = None
-    for platform_slice, text in descriptors:
-        entries = {}
-        for group, section, key in statement_groups(text):
-            if key is not None:
-                if section is None:
-                    raise ValueError(
-                        f"Descriptor of {platform_slice} has an unsectioned key"
-                    )
-                identity = (section, key)
-                value = group.split("=", 1)[1].strip()
-                if identity in entries:
-                    raise ValueError(f"Descriptor of {platform_slice} repeats {identity}")
-                entries[identity] = value
-        controls = {
-            key: value
-            for key, value in entries.items()
-            if key[0] not in {"libraries", "dependencies"}
-        }
-        if configuration is not None and controls != configuration:
-            raise ValueError(f"Descriptor configuration differs at {platform_slice}")
-        configuration = controls
-        for identity, value in entries.items():
-            if identity in merged and merged[identity] != value:
-                raise ValueError(f"Descriptor {identity} conflicts at {platform_slice}")
-            merged[identity] = value
+
+def _entries(platform_slice: str, text: str) -> Entries:
+    """The values a platform slice's descriptor sets."""
+    entries = {}
+    for group, section, key in statement_groups(text):
+        if key is None:
+            continue
+        if section is None:
+            raise ValueError(f"Descriptor of {platform_slice} has an unsectioned key")
+        identity = (section, key)
+        value = group.split("=", 1)[1].strip()
+        if identity in entries:
+            raise ValueError(f"Descriptor of {platform_slice} repeats {identity}")
+        entries[identity] = value
+    return entries
+
+
+def _configuration(entries: Entries) -> Entries:
+    """The entries that every platform slice must share: all but the libraries and dependencies."""
+    return {
+        key: value
+        for key, value in entries.items()
+        if key[0] not in {"libraries", "dependencies"}
+    }
+
+
+def _add(merged: Entries, entries: Entries, platform_slice: str) -> None:
+    """Add a platform slice's entries to the merged ones, which must agree on each key's value."""
+    for identity, value in entries.items():
+        if merged.get(identity, value) != value:
+            raise ValueError(f"Descriptor {identity} conflicts at {platform_slice}")
+        merged[identity] = value
+
+
+def _descriptor(entries: Entries) -> str:
+    """The text of a descriptor, its sections and keys in order."""
     lines = []
-    for section in sorted({key[0] for key in merged}):
+    for section in sorted({key[0] for key in entries}):
         lines += [f"[{section}]"]
         lines += [
             f"{key}={value}"
-            for (group, key), value in sorted(merged.items())
+            for (group, key), value in sorted(entries.items())
             if group == section
         ]
         lines += [""]
     return "\n".join(lines)
+
+
+def merge_descriptors(descriptors: list[tuple[str, str]]) -> str:
+    """Union the descriptors' entries, requiring identical configuration and overlap."""
+    merged: Entries = {}
+    configuration = None
+    for platform_slice, text in descriptors:
+        entries = _entries(platform_slice, text)
+        controls = _configuration(entries)
+        if configuration is not None and controls != configuration:
+            raise ValueError(f"Descriptor configuration differs at {platform_slice}")
+        configuration = controls
+        _add(merged, entries, platform_slice)
+    return _descriptor(merged)
 
 
 def main() -> None:

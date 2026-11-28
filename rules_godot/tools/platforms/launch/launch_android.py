@@ -429,6 +429,32 @@ def start_emulator(
     return serial
 
 
+def _running_device(adb: Adb, running: list[Device], wanted: str) -> Device | None:
+    """Return the running device of that serial or the emulator of that AVD, if any."""
+    # Check serials first. Reading an emulator's AVD name needs a round trip to the
+    # emulator console.
+    return next((d for d in running if d.serial == wanted), None) or next(
+        (d for d in running if d.emulator and avd_name(adb, d.serial) == wanted), None
+    )
+
+
+def _named_device(
+    options: launch_common.Options, adb: Adb, running: list[Device], wanted: str
+) -> str:
+    """Return the serial of the device or AVD of that name, starting the AVD if allowed."""
+    named = _running_device(adb, running, wanted)
+    if named:
+        return _ready(adb, named)
+    emulator = host_tool("emulator", "emulator")
+    startable = avds(emulator)
+    if options.start_device and wanted in startable:
+        return start_emulator(adb, emulator, wanted, options)
+    raise LaunchError(
+        f"no device or AVD {wanted}; running: "
+        f"{', '.join(d.serial for d in running) or 'none'}; AVDs: {', '.join(startable) or 'none'}"
+    )
+
+
 def select_device(options: launch_common.Options, adb: Adb, apk: str | None) -> str:
     """
     Choose the device: the one named, the only one running, or an emulator to start.
@@ -439,20 +465,7 @@ def select_device(options: launch_common.Options, adb: Adb, apk: str | None) -> 
     wanted = options.device or os.environ.get("ANDROID_SERIAL")
     running = devices(adb)
     if wanted:
-        # Serials first: an emulator's AVD name costs a console round trip.
-        named = next((d for d in running if d.serial == wanted), None) or next(
-            (d for d in running if d.emulator and avd_name(adb, d.serial) == wanted), None
-        )
-        if named:
-            return _ready(adb, named)
-        emulator = host_tool("emulator", "emulator")
-        startable = avds(emulator)
-        if options.start_device and wanted in startable:
-            return start_emulator(adb, emulator, wanted, options)
-        raise LaunchError(
-            f"no device or AVD {wanted}; running: "
-            f"{', '.join(d.serial for d in running) or 'none'}; AVDs: {', '.join(startable) or 'none'}"
-        )
+        return _named_device(options, adb, running, wanted)
     device = launch_common.single(
         running,
         "devices",
@@ -597,13 +610,8 @@ def write_launch_arguments(device: Adb, package: str, godot_args: Sequence[str])
         raise LaunchError(f"passing Godot arguments to {package} failed: {output}")
 
 
-def start(
-    device: Adb, package: str, launch_arguments: bool, godot_args: Sequence[str]
-) -> str:
-    """Start the application's launcher activity anew; return its process ID."""
-    device.shell("am", "force-stop", package)
-    if launch_arguments:
-        write_launch_arguments(device, package, godot_args)
+def _launcher_activity(device: Adb, package: str) -> str:
+    """Return the component of the application's launcher activity."""
     resolved = device.shell(
         "cmd",
         "package",
@@ -620,9 +628,11 @@ def start(
         raise LaunchError(
             f"{package} has no launcher activity on {device.serial}: {' '.join(resolved)}"
         )
-    output = device.shell("am", "start", "-W", "-n", component)
-    if "Error" in output or "Exception" in output:
-        raise LaunchError(f"starting {component} failed:\n{output}")
+    return component
+
+
+def _process(device: Adb, package: str) -> str:
+    """Return the ID of the application's process, waiting up to 10 seconds for it."""
     for _ in range(20):
         pid = device.shell("pidof", package, check=False).split(" ")[0]
         if pid:
@@ -631,6 +641,20 @@ def start(
     raise LaunchError(
         f"{package} started but no process of it runs; it may have crashed at start"
     )
+
+
+def start(
+    device: Adb, package: str, launch_arguments: bool, godot_args: Sequence[str]
+) -> str:
+    """Start the application's launcher activity anew; return its process ID."""
+    device.shell("am", "force-stop", package)
+    if launch_arguments:
+        write_launch_arguments(device, package, godot_args)
+    component = _launcher_activity(device, package)
+    output = device.shell("am", "start", "-W", "-n", component)
+    if "Error" in output or "Exception" in output:
+        raise LaunchError(f"starting {component} failed:\n{output}")
+    return _process(device, package)
 
 
 def stream(device: Adb, package: str, pid: str, options: launch_common.Options) -> int:
@@ -667,7 +691,11 @@ def stream(device: Adb, package: str, pid: str, options: launch_common.Options) 
 # ==== Command line ============================================================
 
 
-def list_devices(adb: Adb, emulator: str | None) -> None:
+def list_devices(adb: Adb) -> None:
+    try:
+        emulator = host_tool("emulator", "emulator")
+    except LaunchError:
+        emulator = None
     print("Running:")
     for device in devices(adb):
         kind = (
@@ -682,6 +710,20 @@ def list_devices(adb: Adb, emulator: str | None) -> None:
             print("  " + avd)
 
 
+def _apk(
+    manifest: Mapping[str, Any],
+    options: launch_common.Options,
+    runfile: Callable[[str], str],
+    directory: str,
+) -> str | None:
+    """Return the APK to install, or None with --no-install."""
+    if options.no_install:
+        return None
+    if "apk" in manifest:
+        return runfile(manifest["apk"])
+    return universal_apk(manifest, runfile, directory)
+
+
 def launch(
     manifest: Mapping[str, Any],
     options: launch_common.Options,
@@ -694,20 +736,10 @@ def launch(
         )
     adb = Adb(host_tool("adb", "platform-tools"))
     if options.list_devices:
-        try:
-            emulator = host_tool("emulator", "emulator")
-        except LaunchError:
-            emulator = None
-        list_devices(adb, emulator)
+        list_devices(adb)
         return 0
     with tempfile.TemporaryDirectory(prefix="rules_godot_android_") as directory:
-        apk = None
-        if not options.no_install:
-            apk = (
-                runfile(manifest["apk"])
-                if "apk" in manifest
-                else universal_apk(manifest, runfile, directory)
-            )
+        apk = _apk(manifest, options, runfile, directory)
         device = adb.device(select_device(options, adb, apk))
         if apk:
             log(f"installing {package} on {device.serial}")

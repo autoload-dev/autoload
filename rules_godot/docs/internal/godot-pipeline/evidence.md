@@ -187,8 +187,8 @@ macOS certificate signing has no-cache/no-sandbox/no-remote; adhoc still no-remo
 [Graph declaration](../../../godot/private/graph.bzl),
 [graph inspection rule](../../../godot/private/analysis.bzl),
 [format classes](../../../tools/resources/text.py) (analyzed, opaque and leaf),
-[scanner](../../../tools/resource_graph/graph.py): runtime/import input validation and unknown
-dynamic refs, [selector](../../../tools/resource_graph/selection.py). Static scanning does not
+[scanner](../../../tools/resource_graph/scan.py), [graph](../../../tools/resource_graph/graph.py):
+runtime/import input validation and unknown dynamic refs, [selector](../../../tools/resource_graph/selection.py). Static scanning does not
 dynamically declare new Bazel inputs.
 [Pack format inspection](../../../tools/pack/pck.py) validates the PCK structure.
 
@@ -207,7 +207,7 @@ generator source/stamp and native compilation/link inputs feed actual executable
 [probe export script](../../../tools/editor_action/plugin/shell.gd),
 [action plugin](../../../tools/editor_action/plugin/plugin.gd),
 [engine profiles](../../../godot/private/engine/profiles.bzl) and
-export shell mode (`shell_assets` in [the export tool](../../../tools/editor_action/export.py)).
+export shell mode ([`shell_assets.py`](../../../tools/editor_action/shell_assets.py)).
 Probe reports actual defaults/settings/feature tags; engine profiles supply remaining versioned
 tables.
 The shell-assets action does not parse the already generated main PCK as its input.

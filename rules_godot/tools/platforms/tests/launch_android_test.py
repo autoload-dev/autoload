@@ -1,6 +1,7 @@
 """Tests of the Android launcher against a simulated adb and Android SDK."""
 
 import base64
+import io
 import os
 import shlex
 import shutil
@@ -23,11 +24,25 @@ def _options(*argv: str) -> Options:
     return parse_options(list(argv), "android", launch_android.OPTIONS)
 
 
+# The device shell's answers by the first words of a command.
+_SHELL_ANSWERS = [
+    (["getprop", "sys.boot_completed"], "1"),
+    (["getprop", "ro.product.cpu.abi"], "x86_64"),
+    (
+        ["cmd", "package", "resolve-activity"],
+        f"priority=0 preferredOrder=0\n{PACKAGE}/com.godot.game.GodotAppLauncher",
+    ),
+    (["am", "start"], "Starting: Intent\nStatus: ok"),
+    (["pidof"], "4242"),
+]
+
+
 class FakeAdb:
-    """Answers adb commands from a list of devices and the installed packages."""
+    """Answers adb and emulator commands from lists of devices and AVDs and the installed package."""
 
     def __init__(self) -> None:
         self.devices = [("emulator-5554", "device")]
+        self.avds = ["medium_phone", "tablet"]
         self.installed = False
         self.install_failures: list[str] = []
         self.calls: list[list[str]] = []
@@ -45,31 +60,36 @@ class FakeAdb:
         if args == ["devices", "-l"]:
             lines = [f"{serial} {state} model:Pixel" for serial, state in self.devices]
             return "List of devices attached\n" + "\n".join(lines)
+        if args == ["-list-avds"]:
+            return "\n".join(self.avds)
         if args[:2] == ["emu", "avd"]:
             return "medium_phone\nOK"
         if args[:1] == ["install"]:
-            if self.install_failures:
-                return f"adb: failed to install x.apk: Failure [{self.install_failures.pop(0)}: reason]"
-            self.installed = True
-            return "Performing Streamed Install\nSuccess"
+            return self.install_answer()
         if args[:1] == ["uninstall"]:
             self.installed = False
             return "Success"
         if args[:1] == ["shell"]:
-            words = shlex.split(args[1])
-            if words[:2] == ["pm", "path"]:
-                return f"package:/data/app/{PACKAGE}/base.apk" if self.installed else ""
-            if words[:2] == ["getprop", "sys.boot_completed"]:
-                return "1"
-            if words[:2] == ["getprop", "ro.product.cpu.abi"]:
-                return "x86_64"
-            if words[:3] == ["cmd", "package", "resolve-activity"]:
-                return f"priority=0 preferredOrder=0\n{PACKAGE}/com.godot.game.GodotAppLauncher"
-            if words[:2] == ["am", "start"]:
-                return "Starting: Intent\nStatus: ok"
-            if words[:1] == ["pidof"]:
-                return "4242"
+            return self.shell_answer(shlex.split(args[1]))
         return ""
+
+    def install_answer(self) -> str:
+        if self.install_failures:
+            return f"adb: failed to install x.apk: Failure [{self.install_failures.pop(0)}: reason]"
+        self.installed = True
+        return "Performing Streamed Install\nSuccess"
+
+    def shell_answer(self, words: list[str]) -> str:
+        if words[:2] == ["pm", "path"]:
+            return f"package:/data/app/{PACKAGE}/base.apk" if self.installed else ""
+        return next(
+            (
+                answer
+                for prefix, answer in _SHELL_ANSWERS
+                if words[: len(prefix)] == prefix
+            ),
+            "",
+        )
 
     def installs(self) -> list[list[str]]:
         return [call for call in self.calls if call[:1] == ["install"]]
@@ -122,6 +142,62 @@ class AndroidLaunchTest(unittest.TestCase):
         ):
             self.assertEqual(self.select("--headless"), "emulator-5554")
         self.assertEqual(start.call_args.args[2], "medium_phone")
+
+    def test_a_named_avd_starts_unless_no_start_device(self) -> None:
+        self.adb.devices = []
+        with mock.patch.object(
+            launch_android, "start_emulator", return_value="emulator-5556"
+        ) as start:
+            self.assertEqual(self.select("--device=tablet"), "emulator-5556")
+        self.assertEqual(start.call_args.args[2], "tablet")
+        with self.assertRaisesRegex(
+            LaunchError,
+            "^no device or AVD tablet; running: none; AVDs: medium_phone, tablet$",
+        ):
+            self.select("--device=tablet", "--no-start-device")
+        self.adb.avds = []
+        with self.assertRaisesRegex(LaunchError, "running: none; AVDs: none$"):
+            self.select("--device=tablet")
+
+    def test_without_devices_no_start_device_fails(self) -> None:
+        self.adb.devices = []
+        with self.assertRaisesRegex(LaunchError, "no device runs; connect one"):
+            self.select("--no-start-device")
+
+    def launch(self, *argv: str) -> int:
+        manifest = {"application_id": PACKAGE, "launch_arguments": True, "apk": "app.apk"}
+        with (
+            mock.patch.dict(os.environ, {"ANDROID_SERIAL": ""}),
+            mock.patch.object(launch_android, "host_tool", return_value="emulator"),
+        ):
+            return launch_android.launch(manifest, _options(*argv), lambda path: path)
+
+    def test_a_launch_installs_and_starts_the_application(self) -> None:
+        self.assertEqual(self.launch("--detach"), 0)
+        self.assertEqual(self.adb.installs()[0][-1], "app.apk")
+        self.assertIn(["shell", "pidof org.example.game"], self.adb.calls)
+
+    def test_install_only_and_no_install_skip_a_step(self) -> None:
+        self.assertEqual(self.launch("--install-only"), 0)
+        self.assertNotIn(["shell", "pidof org.example.game"], self.adb.calls)
+        self.adb.calls.clear()
+        self.assertEqual(self.launch("--no-install", "--detach"), 0)
+        self.assertFalse(self.adb.installs())
+        self.assertIn(["shell", "pidof org.example.game"], self.adb.calls)
+
+    def test_list_devices_names_emulators_by_their_avd(self) -> None:
+        self.adb.devices.append(("R58M123", "unauthorized"))
+        with mock.patch("sys.stdout", new_callable=io.StringIO) as output:
+            self.assertEqual(self.launch("--list-devices"), 0)
+        self.assertEqual(
+            output.getvalue(),
+            "Running:\n"
+            "  emulator-5554  device  emulator medium_phone\n"
+            "  R58M123  unauthorized  Pixel\n"
+            "Startable AVDs:\n"
+            "  medium_phone\n"
+            "  tablet\n",
+        )
 
     def test_a_downgrade_installs_with_d_and_keeps_the_data(self) -> None:
         self.install()

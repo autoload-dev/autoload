@@ -15,14 +15,16 @@ from collections import defaultdict, deque
 from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path, PurePosixPath
 
-from tools.resource_graph.graph import (
+from tools.resource_graph.diagnostics import (
     Findings,
-    edge_targets,
     format_diagnostic,
+    sorted_diagnostics,
+)
+from tools.resource_graph.graph import (
+    edge_targets,
     is_inferred_runtime,
     read_json,
     read_manifest,
-    sorted_diagnostics,
 )
 from tools.resource_graph.query import chain, file_pairs
 from tools.resources.files import DIRECTORY_MARKERS, hidden_by

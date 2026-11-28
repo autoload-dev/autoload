@@ -52,7 +52,7 @@ def configured_output(module: Path, target: str, config: str, suffix: str) -> Pa
     return matches[0]
 
 
-def main() -> None:
+def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--root",
@@ -67,123 +67,141 @@ def main() -> None:
     parser.add_argument("--java", type=Path, required=True)
     parser.add_argument("--build-tools", required=True)
     parser.add_argument("--output", type=Path, help="Write the result to this path")
-    args = parser.parse_args()
+    return parser
+
+
+def _toolchains(args: argparse.Namespace, root: Path) -> dict[str, str]:
+    """Return the versions of the toolchains that built and inspect the artifacts."""
+    return {
+        "bazel": (root / ".bazelversion").read_text().strip(),
+        "godot": "4.7.2.stable",
+        "android_sdk": args.android_api_level,
+        "android_build_tools": args.build_tools,
+        "android_ndk": (args.android_ndk / "source.properties").read_text().strip(),
+        "java_build_runtime_and_language": "21",
+        "xcode": command(["/usr/bin/xcodebuild", "-version"]),
+        "iphonesimulator_sdk": command(
+            ["/usr/bin/xcrun", "--sdk", "iphonesimulator", "--show-sdk-version"]
+        ),
+    }
+
+
+def _build_commands(args: argparse.Namespace, consumer: Path) -> dict[str, str]:
+    """Return the commands that build the artifacts in the root module."""
+    return {
+        "android": (
+            f"cd {shlex.quote(str(consumer))} && "
+            f"ANDROID_HOME={shlex.quote(str(args.android_sdk))} "
+            f"ANDROID_NDK_HOME={shlex.quote(str(args.android_ndk))} "
+            f"bazel build {ANDROID_APP} --config=android"
+        ),
+        "ios": (
+            f"cd {shlex.quote(str(consumer))} && bazel build {IOS_APP} --config=official"
+        ),
+        "macos": (
+            f"cd {shlex.quote(str(consumer))} && bazel build {MACOS_APP} "
+            "--@autoload_rules_godot//godot:macos_signing=adhoc"
+        ),
+    }
+
+
+# The lines of aapt's badging that summarize the APK's manifest.
+_MANIFEST_SUMMARY = (
+    "package:",
+    "sdkVersion:",
+    "targetSdkVersion:",
+    "launchable-activity:",
+    "native-code:",
+)
+
+
+def _android_evidence(apk: Path, args: argparse.Namespace, temporary: Path) -> dict:
+    """Return what the APK's signature, manifest, libraries and pack show."""
+    android_tools = args.android_sdk / "build-tools" / args.build_tools
+    with zipfile.ZipFile(apk) as archive:
+        native_paths = sorted(
+            path
+            for path in archive.namelist()
+            if path.startswith("lib/") and path.endswith(".so")
+        )
+        if ANDROID_LIBRARY not in native_paths:
+            raise ValueError("Android artifact has no compiled extension library")
+        library = temporary / Path(ANDROID_LIBRARY).name
+        library.write_bytes(archive.read(ANDROID_LIBRARY))
+        readelf = (
+            args.android_ndk / "toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-readelf"
+        )
+        symbols = command([readelf, "--dyn-syms", "--wide", library])
+        if ENTRY_SYMBOL not in symbols:
+            raise ValueError("Android extension entry is absent from dynamic symbols")
+        badging = command([android_tools / "aapt", "dump", "badging", apk])
+        return {
+            "artifact": str(apk),
+            "sha256": digest(apk),
+            "size_bytes": apk.stat().st_size,
+            "signature_verification": command(
+                [
+                    args.java,
+                    "-jar",
+                    android_tools / "lib/apksigner.jar",
+                    "verify",
+                    "--verbose",
+                    apk,
+                ]
+            ),
+            "manifest_summary": [
+                line
+                for line in badging.splitlines()
+                if line.startswith(_MANIFEST_SUMMARY)
+            ],
+            "native_libraries": native_paths,
+            "gdextension_entry_exported": ENTRY_SYMBOL,
+            "pck": pck_contents(archive.read("assets/main.pck")),
+        }
+
+
+def _ios_evidence(bundle: Path, temporary: Path) -> dict:
+    """Return what the iOS bundle's signature, executable and pack show."""
+    app = application_bundle(bundle, temporary / "ios")
+    command(["/usr/bin/codesign", "--verify", "--deep", "--strict", app])
+    executable = app / IOS_EXECUTABLE
+    exported = command(["/usr/bin/xcrun", "dyld_info", "-exports", executable])
+    if f"_{ENTRY_SYMBOL}" not in exported:
+        raise ValueError("iOS static extension entry is absent from Mach-O exports")
+    pack = pck_contents((app / f"{IOS_EXECUTABLE}.pck").read_bytes())
+    descriptor = "\n".join(pack["extension_descriptors"].values())
+    if not re.search(r'ios[^=]*=\s*"res://[^"\n]+\.a"', descriptor):
+        raise ValueError("iOS pack must retain a nonempty static .a descriptor path")
+    sha256, size = bundle_identity(bundle)
+    return {
+        "artifact": str(bundle),
+        "sha256": sha256,
+        "size_bytes": size,
+        "signature_verification": "codesign --verify --deep --strict passed",
+        "cpu": command(["/usr/bin/file", "-b", executable]),
+        "gdextension_entry_exported": f"_{ENTRY_SYMBOL}",
+        "pck": pack,
+        "official_template_caveat": "4.7.2 simulator archive is x86_64 despite arm64+x86_64 XCFramework metadata",
+    }
+
+
+def main() -> None:
+    args = _parser().parse_args()
     root = args.root.resolve()
     # The repository's root module, which holds the scenarios.
     consumer = root.parent
-    apk = configured_output(
-        consumer,
-        ANDROID_APP,
-        "android",
-        "/app.apk",
-    )
+    apk = configured_output(consumer, ANDROID_APP, "android", "/app.apk")
     # A Simulator build keeps the application a directory.
     bundle = configured_output(consumer, IOS_APP, "official", f"/{IOS_EXECUTABLE}.app")
-    android_tools = args.android_sdk / "build-tools" / args.build_tools
     evidence = {
         "validated_at_utc": datetime.now(UTC).isoformat(),
         "device_execution": False,
-        "toolchains": {
-            "bazel": (root / ".bazelversion").read_text().strip(),
-            "godot": "4.7.2.stable",
-            "android_sdk": args.android_api_level,
-            "android_build_tools": args.build_tools,
-            "android_ndk": (args.android_ndk / "source.properties").read_text().strip(),
-            "java_build_runtime_and_language": "21",
-            "xcode": command(["/usr/bin/xcodebuild", "-version"]),
-            "iphonesimulator_sdk": command(
-                ["/usr/bin/xcrun", "--sdk", "iphonesimulator", "--show-sdk-version"]
-            ),
-        },
-        "build_commands": {
-            "android": (
-                f"cd {shlex.quote(str(consumer))} && "
-                f"ANDROID_HOME={shlex.quote(str(args.android_sdk))} "
-                f"ANDROID_NDK_HOME={shlex.quote(str(args.android_ndk))} "
-                f"bazel build {ANDROID_APP} --config=android"
-            ),
-            "ios": (
-                f"cd {shlex.quote(str(consumer))} && "
-                f"bazel build {IOS_APP} --config=official"
-            ),
-            "macos": (
-                f"cd {shlex.quote(str(consumer))} && bazel build {MACOS_APP} "
-                "--@autoload_rules_godot//godot:macos_signing=adhoc"
-            ),
-        },
+        "toolchains": _toolchains(args, root),
+        "build_commands": _build_commands(args, consumer),
     }
     with tempfile.TemporaryDirectory() as temporary:
-        temporary = Path(temporary)
-        with zipfile.ZipFile(apk) as archive:
-            native_paths = sorted(
-                path
-                for path in archive.namelist()
-                if path.startswith("lib/") and path.endswith(".so")
-            )
-            if ANDROID_LIBRARY not in native_paths:
-                raise ValueError("Android artifact has no compiled extension library")
-            library = temporary / Path(ANDROID_LIBRARY).name
-            library.write_bytes(archive.read(ANDROID_LIBRARY))
-            readelf = (
-                args.android_ndk
-                / "toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-readelf"
-            )
-            symbols = command([readelf, "--dyn-syms", "--wide", library])
-            if ENTRY_SYMBOL not in symbols:
-                raise ValueError("Android extension entry is absent from dynamic symbols")
-            badging = command([android_tools / "aapt", "dump", "badging", apk])
-            evidence["android"] = {
-                "artifact": str(apk),
-                "sha256": digest(apk),
-                "size_bytes": apk.stat().st_size,
-                "signature_verification": command(
-                    [
-                        args.java,
-                        "-jar",
-                        android_tools / "lib/apksigner.jar",
-                        "verify",
-                        "--verbose",
-                        apk,
-                    ]
-                ),
-                "manifest_summary": [
-                    line
-                    for line in badging.splitlines()
-                    if line.startswith(
-                        (
-                            "package:",
-                            "sdkVersion:",
-                            "targetSdkVersion:",
-                            "launchable-activity:",
-                            "native-code:",
-                        )
-                    )
-                ],
-                "native_libraries": native_paths,
-                "gdextension_entry_exported": ENTRY_SYMBOL,
-                "pck": pck_contents(archive.read("assets/main.pck")),
-            }
-        app = application_bundle(bundle, temporary / "ios")
-        command(["/usr/bin/codesign", "--verify", "--deep", "--strict", app])
-        executable = app / IOS_EXECUTABLE
-        exported = command(["/usr/bin/xcrun", "dyld_info", "-exports", executable])
-        if f"_{ENTRY_SYMBOL}" not in exported:
-            raise ValueError("iOS static extension entry is absent from Mach-O exports")
-        pack = pck_contents((app / f"{IOS_EXECUTABLE}.pck").read_bytes())
-        descriptor = "\n".join(pack["extension_descriptors"].values())
-        if not re.search(r'ios[^=]*=\s*"res://[^"\n]+\.a"', descriptor):
-            raise ValueError("iOS pack must retain a nonempty static .a descriptor path")
-        sha256, size = bundle_identity(bundle)
-        evidence["ios"] = {
-            "artifact": str(bundle),
-            "sha256": sha256,
-            "size_bytes": size,
-            "signature_verification": "codesign --verify --deep --strict passed",
-            "cpu": command(["/usr/bin/file", "-b", executable]),
-            "gdextension_entry_exported": f"_{ENTRY_SYMBOL}",
-            "pck": pack,
-            "official_template_caveat": "4.7.2 simulator archive is x86_64 despite arm64+x86_64 XCFramework metadata",
-        }
+        evidence["android"] = _android_evidence(apk, args, Path(temporary))
+        evidence["ios"] = _ios_evidence(bundle, Path(temporary))
     result = json.dumps(evidence, indent=2, sort_keys=True) + "\n"
     if args.output:
         output = args.output if args.output.is_absolute() else root / args.output

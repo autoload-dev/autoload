@@ -62,6 +62,12 @@ def validate_addon_directories(addons):
                 second.directory,
             ))
 
+def _enclosing_addons(path, by_directory):
+    """The add-ons whose directory holds the resource path, outermost first."""
+    parts = path.split("/")
+    directories = ["/".join(parts[:depth]) for depth in range(1, len(parts))]
+    return [by_directory[directory] for directory in directories if directory in by_directory]
+
 def validate_addon_files(addons, members, owners):
     """
     Fail for a member or import input in an add-on's directory that the add-on does not declare (FR-012).
@@ -79,12 +85,7 @@ def validate_addon_files(addons, members, owners):
     if not by_directory:
         return
     for path in members:
-        parts = path.split("/")
-        for depth in range(1, len(parts)):
-            addon = by_directory.get("/".join(parts[:depth]))
-            if not addon:
-                continue
-
+        for addon in _enclosing_addons(path, by_directory):
             # The add-on's parts and extensions declare its files; any other target
             # declaring one, even with the same source, declares it twice.
             if owners.get(path) not in addon_owners(addon):

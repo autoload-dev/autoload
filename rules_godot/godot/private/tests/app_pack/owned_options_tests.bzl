@@ -66,16 +66,25 @@ def _test_owned_options_follow_the_baseline_policy(env):
                 expect.that_dict(result.preset_options).keys().not_contains("fixture/mutation")
                 expect.that_dict(authored).contains_exactly({"application/name": '"Policy fixture"'})
 
+def _with_choice(row, families, value):
+    if row["derive"] != "application_enum":
+        return dict(row)
+    return row | {"choices": row["choices"] | {families: value}}
+
+def _with_families_choice(profile, families, value):
+    """Return a copy of the profile whose iOS device family row maps the families to the value."""
+    changed = dict(profile)
+    changed["owned_export_options"] = dict(profile["owned_export_options"])
+    changed["owned_export_options"]["ios"] = [
+        _with_choice(row, families, value)
+        for row in profile["owned_export_options"]["ios"]
+    ]
+    return changed
+
 def _test_owned_options_follow_the_engine_profile(env):
     stable = engine_profile("4.7.2")
     preview = engine_profile("4.8.0-beta1")
-    changed = dict(preview)
-    changed["owned_export_options"] = dict(preview["owned_export_options"])
-    changed["owned_export_options"]["ios"] = [dict(row) for row in preview["owned_export_options"]["ios"]]
-    for row in changed["owned_export_options"]["ios"]:
-        if row["derive"] == "application_enum":
-            row["choices"] = dict(row["choices"])
-            row["choices"]["ipad,iphone"] = 0
+    changed = _with_families_choice(preview, "ipad,iphone", 0)
     altered = resolve_export_options({}, _context("ios"), changed, "4.8.0-beta1")
     env.expect.that_str(altered.pack_options["application/targeted_device_family"]).equals("0")
     for profile, version in [(stable, "4.7.2"), (preview, "4.8.0-beta1")]:
@@ -94,6 +103,38 @@ def _test_owned_options_follow_the_engine_profile(env):
         expect.that_dict(older.rejected_options).keys().not_contains(delta)
         expect.that_dict(result.preset_options).keys().not_contains(delta)
         expect.that_dict(result.preset_prelude).keys().not_contains(delta)
+
+def _with_row_update(profile, operating_system, key, update):
+    """Return a copy of the profile whose owned option row of the key takes the update."""
+    changed = dict(profile)
+    changed["owned_export_options"] = dict(profile["owned_export_options"])
+    changed["owned_export_options"][operating_system] = [
+        row | update if row["key"] == key else row
+        for row in profile["owned_export_options"][operating_system]
+    ]
+    return changed
+
+def _expected_options(family, operating_system, key, literal):
+    """Return the pack, preset and prelude options a row change of the family sets the key in."""
+    pack = dict(_PACK[operating_system])
+    preset = _PACK[operating_system] | _PRESET[operating_system]
+    prelude = dict(_PRELUDE[operating_system])
+    if family in ["identity", "sdk"]:
+        pack[key] = literal
+        preset[key] = literal
+    elif family == "cpu":
+        preset[key] = literal
+    else:
+        prelude[key] = literal
+    return struct(pack = pack, preset = preset, prelude = prelude)
+
+def _expect_other_exporters_unchanged(expect, originals, operating_system, changed):
+    for other, original in originals.items():
+        if other != operating_system:
+            expect.where(other = other).that_bool(
+                resolve_export_options({}, _context(other), changed, "4.7.2") == original,
+                "result == original",
+            ).equals(True)
 
 def _test_policy_row_change_reaches_only_its_exporter(env):
     baseline = engine_profile("4.7.2")
@@ -114,33 +155,16 @@ def _test_policy_row_change_reaches_only_its_exporter(env):
         ("sdk", "android", "gradle_build/target_sdk", {}, '"37"'),
         ("fixed", "linux", "binary_format/embed_pck", {"value": True}, "true"),
     ]:
-        changed = dict(baseline)
-        changed["owned_export_options"] = dict(baseline["owned_export_options"])
-        changed["owned_export_options"][operating_system] = [row | update if row["key"] == key else row for row in baseline["owned_export_options"][operating_system]]
+        changed = _with_row_update(baseline, operating_system, key, update)
         if family == "sdk":
             changed["android"] = baseline["android"] | {"target_sdk": "37"}
         result = resolve_export_options({}, _context(operating_system), changed, "4.7.2")
-        expected_pack = dict(_PACK[operating_system])
-        expected_preset = _PACK[operating_system] | _PRESET[operating_system]
-        expected_prelude = dict(_PRELUDE[operating_system])
-        if family in ["identity", "sdk"]:
-            expected_pack[key] = literal
-            expected_preset[key] = literal
-        elif family == "cpu":
-            expected_preset[key] = literal
-        else:
-            expected_prelude[key] = literal
+        expected = _expected_options(family, operating_system, key, literal)
         expect = env.expect.where(family = family)
-        expect.where(output = "provider").that_dict(result.pack_options).contains_exactly(expected_pack)
-        expect.where(output = "export/probe").that_dict(result.preset_options).contains_exactly(expected_preset)
-        expect.where(output = "prelude").that_dict(result.preset_prelude).contains_exactly(expected_prelude)
-        for other, original in originals.items():
-            if other != operating_system:
-                # Other exporter unchanged.
-                expect.where(other = other).that_bool(
-                    resolve_export_options({}, _context(other), changed, "4.7.2") == original,
-                    "result == original",
-                ).equals(True)
+        expect.where(output = "provider").that_dict(result.pack_options).contains_exactly(expected.pack)
+        expect.where(output = "export/probe").that_dict(result.preset_options).contains_exactly(expected.preset)
+        expect.where(output = "prelude").that_dict(result.preset_prelude).contains_exactly(expected.prelude)
+        _expect_other_exporters_unchanged(expect, originals, operating_system, changed)
 
 def _unsupported_profile_impl(_ctx):
     engine_profile("4.9.0")

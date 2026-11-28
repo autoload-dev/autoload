@@ -1,25 +1,53 @@
 @tool
 extends "export.gd"
 
-# The shell probe's export plugin; the record export.gd writes carries its facts.
-# During an export of the staged project, record what Godot decides for it: the
-# feature tags, the export options with their defaults, the project settings
-# with the export's feature overrides, the values of the version options and
-# the translations of the project's name. Then render the application's images
-# the action lists into their outputs, as Godot's exporters do, and skip every
-# file, as the export is thrown away.
+# The shell probe's export plugin. During an export of the staged project, it
+# records what Godot decides for it: the feature tags, the export options with
+# their defaults, the project settings with the export's feature overrides, the
+# values of the version options and the translations of the project's name.
+# export.gd writes these facts into the record. The plugin also renders the
+# application's images the action lists, as Godot's exporters do. It skips
+# every file, because the export is thrown away.
 
 
 func _export_begin(features: PackedStringArray, is_debug: bool, path: String, flags: int) -> void:
 	super(features, is_debug, path, flags)
 	var preset: EditorExportPreset = get_export_preset()
-	# A preset lists its advanced options only in the editor's advanced mode and
-	# no option an export plugin overrides; a new preset has no overrides.
+	# A preset lists its advanced options only in the editor's advanced mode.
+	# It leaves out the options an export plugin overrides; a new preset lists them.
 	EditorInterface.get_editor_settings().set_setting("_export_preset_advanced_mode", true)
+	var clean: EditorExportPreset = get_export_platform().create_preset()
 	var options: Dictionary = {}
 	var option_types: Dictionary = {}
 	var actual_types: Dictionary = {}
-	var clean: EditorExportPreset = get_export_platform().create_preset()
+	for option_name: String in _option_names(preset, clean):
+		options[option_name] = _plain(preset.get(option_name))
+		option_types[option_name] = type_string(typeof(clean.get(option_name)))
+		actual_types[option_name] = type_string(typeof(preset.get(option_name)))
+	var settings: Dictionary = _settings(preset)
+	var images: Dictionary = _render_images(preset)
+	facts = {
+		"features": Array(features),
+		"editor_version": Engine.get_version_info()["string"],
+		"options": options,
+		"option_types": option_types,
+		"actual_option_types": actual_types,
+		"preset_settings": {"custom_features": preset.get_custom_features(), "script_export_mode": preset.get_script_export_mode()},
+		"settings": settings,
+		"versions": _versions(preset),
+		"name_translations": _name_translations(preset),
+		"rendered": images["rendered"],
+		"copied": images["copied"],
+	}
+
+
+func _export_file(_path: String, _type: String, _features: PackedStringArray) -> void:
+	skip()
+
+
+# The export options the probe records: those the preset or a new preset lists,
+# and those the action names if the export platform has them.
+func _option_names(preset: EditorExportPreset, clean: EditorExportPreset) -> Dictionary:
 	var names: Dictionary = {}
 	for listed: EditorExportPreset in [preset, clean]:
 		for property: Dictionary in listed.get_property_list():
@@ -31,32 +59,30 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, fl
 	for option_name: String in option_names + authored_options:
 		if clean.has(option_name):
 			names[option_name] = true
-	for option_name: String in names:
-		options[option_name] = _plain(preset.get(option_name))
-		option_types[option_name] = type_string(typeof(clean.get(option_name)))
-		actual_types[option_name] = type_string(typeof(preset.get(option_name)))
+	return names
+
+
+# The stored project settings with the export's feature overrides.
+func _settings(preset: EditorExportPreset) -> Dictionary:
 	var settings: Dictionary = {}
 	for property: Dictionary in ProjectSettings.get_property_list():
 		var setting: String = property["name"]
 		var usage: int = property["usage"]
 		if usage & PROPERTY_USAGE_STORAGE and "/" in setting:
 			settings[setting] = _plain(preset.get_project_setting(setting))
+	return settings
+
+
+# Render the images the action lists into their outputs. The result names the
+# rendered entries and maps each entry that rules_godot copies to its source.
+func _render_images(preset: EditorExportPreset) -> Dictionary:
 	var rendered: Array[String] = []
 	var copied: Dictionary = {}
 	var loaded: Dictionary = {}
 	var saved: Dictionary = {}
 	var images: Array = action["images"]
 	for entry: Dictionary in images:
-		var source: String = ""
-		var candidates: Array = entry["sources"]
-		for candidate: Variant in candidates:
-			source = _resolve(preset, candidate)
-			if not source.is_empty():
-				if not loaded.has(source):
-					loaded[source] = null if _copies(entry, source) else _load(source)
-				if _copies(entry, source) or loaded[source] != null:
-					break
-			source = ""
+		var source: String = _first_source(preset, entry, loaded)
 		if source.is_empty():
 			continue
 		var entry_name: String = entry["name"]
@@ -64,41 +90,26 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, fl
 			# Godot uses a file of this type as it is; rules_godot copies it.
 			copied[entry_name] = source
 			continue
-		# Images of the same source and rendering are saved once.
-		var output: String = entry["output"]
-		var key: String = JSON.stringify([source, entry.get("size", 0), entry.get("interpolation"), entry.get("opaque", false), output.get_extension()])
-		if saved.has(key):
-			var _made: Error = DirAccess.make_dir_recursive_absolute(output.get_base_dir())
-			var copied_from: String = saved[key]
-			if DirAccess.copy_absolute(copied_from, output) == OK:
-				rendered.append(entry_name)
-		else:
-			var image: Image = loaded[source]
-			var copy: Image = image.duplicate()
-			if _save(preset, entry, copy):
-				saved[key] = output
-				rendered.append(entry_name)
-	var versions: Dictionary = {}
-	var version_names: Array = action["versions"]
-	for version_name: String in version_names:
-		versions[version_name] = preset.get_version(version_name, false)
-	facts = {
-		"features": Array(features),
-		"editor_version": Engine.get_version_info()["string"],
-		"options": options,
-		"option_types": option_types,
-		"actual_option_types": actual_types,
-		"preset_settings": {"custom_features": preset.get_custom_features(), "script_export_mode": preset.get_script_export_mode()},
-		"settings": settings,
-		"versions": versions,
-		"name_translations": _name_translations(preset),
-		"rendered": rendered,
-		"copied": copied,
-	}
+		var image: Image = loaded[source]
+		if _render(preset, entry, source, image, saved):
+			rendered.append(entry_name)
+	return {"rendered": rendered, "copied": copied}
 
 
-func _export_file(_path: String, _type: String, _features: PackedStringArray) -> void:
-	skip()
+# Return the first source of the entry that Godot can use, or "" if none works.
+# `loaded` caches the image of each path tried. It holds null for a path that is copied
+# or does not load.
+func _first_source(preset: EditorExportPreset, entry: Dictionary, loaded: Dictionary) -> String:
+	var candidates: Array = entry["sources"]
+	for candidate: Variant in candidates:
+		var source: String = _resolve(preset, candidate)
+		if source.is_empty():
+			continue
+		if not loaded.has(source):
+			loaded[source] = null if _copies(entry, source) else _load(source)
+		if _copies(entry, source) or loaded[source] != null:
+			return source
+	return ""
 
 
 func _copies(entry: Dictionary, path: String) -> bool:
@@ -108,9 +119,9 @@ func _copies(entry: Dictionary, path: String) -> bool:
 	return path.ends_with(extension)
 
 
-# A source: option:NAME and setting:NAME name a path an export option or a
-# project setting holds, file:PATH an image file; [source, condition] applies
-# only when the condition resolves to a path as well.
+# The path a source names. option:NAME and setting:NAME read it from an export
+# option or a project setting, and file:PATH names an image file. A pair
+# [source, condition] applies only if the condition resolves to a path too.
 func _resolve(preset: EditorExportPreset, source: Variant) -> String:
 	if source is Array:
 		var pair: Array = source
@@ -128,18 +139,44 @@ func _resolve(preset: EditorExportPreset, source: Variant) -> String:
 # As EditorExportPlatform loads icons and splash images: the imported texture,
 # else the image file.
 func _load(path: String) -> Image:
-	if ResourceLoader.exists(path):
-		var texture: Texture2D = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE) as Texture2D
-		if texture != null:
-			var imported: Image = texture.get_image()
-			if imported != null and not imported.is_empty():
-				if imported.is_compressed():
-					var _decompressed: Error = imported.decompress()
-				return imported
+	var imported: Image = _imported(path)
+	if imported != null:
+		return imported
 	if not FileAccess.file_exists(path):
 		return null
 	var image: Image = Image.load_from_file(path)
 	return image if image != null and not image.is_empty() else null
+
+
+# The decompressed image of the texture imported from path, or null if there is none.
+func _imported(path: String) -> Image:
+	if not ResourceLoader.exists(path):
+		return null
+	var texture: Texture2D = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE) as Texture2D
+	if texture == null:
+		return null
+	var imported: Image = texture.get_image()
+	if imported == null or imported.is_empty():
+		return null
+	if imported.is_compressed():
+		var _decompressed: Error = imported.decompress()
+	return imported
+
+
+# Save the entry's rendering of the source's image to its output. A rendering
+# that is saved already is copied instead; saved maps each rendering to its file.
+func _render(preset: EditorExportPreset, entry: Dictionary, source: String, image: Image, saved: Dictionary) -> bool:
+	var output: String = entry["output"]
+	var key: String = JSON.stringify([source, entry.get("size", 0), entry.get("interpolation"), entry.get("opaque", false), output.get_extension()])
+	if saved.has(key):
+		var _made: Error = DirAccess.make_dir_recursive_absolute(output.get_base_dir())
+		var copied_from: String = saved[key]
+		return DirAccess.copy_absolute(copied_from, output) == OK
+	var copy: Image = image.duplicate()
+	if not _save(preset, entry, copy):
+		return false
+	saved[key] = output
+	return true
 
 
 func _save(preset: EditorExportPreset, entry: Dictionary, image: Image) -> bool:
@@ -167,34 +204,50 @@ func _save(preset: EditorExportPreset, entry: Dictionary, image: Image) -> bool:
 	return error == OK
 
 
+func _versions(preset: EditorExportPreset) -> Dictionary:
+	var versions: Dictionary = {}
+	var version_names: Array = action["versions"]
+	for version_name: String in version_names:
+		versions[version_name] = preset.get_version(version_name, false)
+	return versions
+
+
 # The project's name in each locale of its translations, as Godot's Apple
 # exporters name the application.
 func _name_translations(preset: EditorExportPreset) -> Dictionary:
 	var project_name: String = str(preset.get_project_setting("application/config/name"))
 	var names: Variant = preset.get_project_setting("application/config/name_localized")
 	var domain: TranslationDomain = TranslationServer.get_or_add_domain("rules_godot.project_name")
+	var locales: Array[String] = _add_translations(domain)
+	var translated: Dictionary = {}
+	var localized: Dictionary = names if names is Dictionary else {}
+	if not localized.is_empty():
+		for locale: String in locales:
+			translated[locale] = localized.get(locale, null)
+		return translated
+	for locale: String in locales:
+		domain.set_locale_override(locale)
+		var value: String = str(domain.translate(project_name))
+		translated[locale] = null
+		if value != project_name:
+			translated[locale] = value
+	return translated
+
+
+# Add the project's translations to the domain and return their locales.
+func _add_translations(domain: TranslationDomain) -> Array[String]:
 	var locales: Array[String] = []
 	var translations: PackedStringArray = ProjectSettings.get_setting("internationalization/locale/translations", PackedStringArray())
 	for path: String in translations:
 		if not ResourceLoader.exists(path):
 			continue
 		var translation: Translation = load(path) as Translation
-		if translation != null:
-			domain.add_translation(translation)
-			if not locales.has(translation.get_locale()):
-				locales.append(translation.get_locale())
-	var translated: Dictionary = {}
-	var localized: Dictionary = names if names is Dictionary else {}
-	for locale: String in locales:
-		if not localized.is_empty():
-			translated[locale] = localized.get(locale, null)
-		else:
-			domain.set_locale_override(locale)
-			var value: String = str(domain.translate(project_name))
-			translated[locale] = null
-			if value != project_name:
-				translated[locale] = value
-	return translated
+		if translation == null:
+			continue
+		domain.add_translation(translation)
+		if not locales.has(translation.get_locale()):
+			locales.append(translation.get_locale())
+	return locales
 
 
 func _plain(value: Variant) -> Variant:

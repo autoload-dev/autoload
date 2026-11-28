@@ -1,10 +1,9 @@
 extends Node
 
-# rules_godot's run logger, an autoload the runner adds through override.cfg
-# (tools/source_run/run.py). It creates the file rules_godot/run/errors names when the
-# game starts and records there every error Godot reports while the game's tree
-# exists; with rules_godot/run/stop_on_error, the first error quits the game
-# with status 1.
+# rules_godot's run logger, an autoload that the runner (tools/source_run/run.py) adds
+# through override.cfg. When the game starts, it creates the file rules_godot/run/errors
+# names. It records there every error Godot reports while the game's tree exists. With
+# rules_godot/run/stop_on_error, the first error quits the game with status 1.
 
 
 class Recorder:
@@ -19,6 +18,8 @@ class Recorder:
 	# An error this logger causes itself reaches it again; it is not recorded.
 	var _writing: bool = false
 
+	# Godot's Logger fixes the signature of this override.
+	# @codescene(disable:"Excess Number of Function Arguments")
 	func _log_error(
 		function: String,
 		file_name: String,
@@ -32,29 +33,13 @@ class Recorder:
 		# Warnings are not errors.
 		if not recording or error_type == ERROR_TYPE_WARNING:
 			return
-		var location: String = "%s:%d" % [file_name, line]
-		for backtrace: ScriptBacktrace in script_backtraces:
-			if backtrace.get_frame_count() > 0:
-				location = "%s:%d" % [backtrace.get_frame_file(0), backtrace.get_frame_line(0)]
-				break
 		var entry: Dictionary = {
 			"type": TYPES[error_type],
-			"location": location,
+			"location": _location(file_name, line, script_backtraces),
 			"function": function,
 			"text": rationale if rationale else code,
 		}
-		_mutex.lock()
-		if _writing or file == null or not recording:
-			_mutex.unlock()
-			return
-		_writing = true
-		var _stored: bool = file.store_line(JSON.stringify(entry))
-		file.flush()
-		_writing = false
-		var quit: bool = stop
-		stop = false
-		_mutex.unlock()
-		if quit:
+		if _record(entry):
 			(Engine.get_main_loop() as SceneTree).quit.call_deferred(1)
 
 	func _log_message(_message: String, _error: bool) -> void:
@@ -66,6 +51,29 @@ class Recorder:
 		if file:
 			file.close()
 		_mutex.unlock()
+
+	# The script line that reported the error, else the engine's.
+	func _location(file_name: String, line: int, script_backtraces: Array[ScriptBacktrace]) -> String:
+		for backtrace: ScriptBacktrace in script_backtraces:
+			if backtrace.get_frame_count() > 0:
+				return "%s:%d" % [backtrace.get_frame_file(0), backtrace.get_frame_line(0)]
+		return "%s:%d" % [file_name, line]
+
+	# Write the entry to the file; return whether the game should quit. Only the
+	# first recorded error quits it.
+	func _record(entry: Dictionary) -> bool:
+		_mutex.lock()
+		if _writing or file == null or not recording:
+			_mutex.unlock()
+			return false
+		_writing = true
+		var _stored: bool = file.store_line(JSON.stringify(entry))
+		file.flush()
+		_writing = false
+		var quit: bool = stop
+		stop = false
+		_mutex.unlock()
+		return quit
 
 
 var _recorder: Recorder = Recorder.new()

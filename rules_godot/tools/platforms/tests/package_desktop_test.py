@@ -211,6 +211,29 @@ class PackageDesktopTest(unittest.TestCase):
         ):
             self.package("linux", "wrong_cpu", manifest=str(manifest), cpu="arm64")
 
+    def test_native_code_of_the_selected_cpu_is_installed(self) -> None:
+        self.runtime.write_bytes(elf())
+        library = self.root / "libgame.so"
+        library.write_bytes(elf())
+        manifest = self.root / "native.json"
+        manifest.write_text(
+            json.dumps([{"source": str(library), "destination": "native/libgame.so"}])
+        )
+        args = self.package("linux", "native", manifest=str(manifest), cpu="arm64")
+        with tarfile.open(args.archive) as archive:
+            self.assertEqual(archive.getmember("native/Game").mode, 0o755)
+            self.assertEqual(archive.getmember("native/native/libgame.so").mode, 0o644)
+        self.assertEqual((Path(args.output) / "Game").read_bytes(), elf())
+        # Without a manifest entry's context, the runtime's own error stands.
+        self.runtime.write_bytes(elf(cpu="x86_64"))
+        with self.assertRaisesRegex(ValueError, "^Runtime CPU arm64 is absent"):
+            self.package("linux", "wrong_runtime", cpu="arm64")
+
+    def test_app_name_is_a_filename(self) -> None:
+        for name in ["", ".", "..", "a/b", "a\\b"]:
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "app_name"):
+                self.package("linux", "named", app_name=name)
+
     def test_rejects_paths_outside_bundle(self) -> None:
         for destination in [
             "../escape",

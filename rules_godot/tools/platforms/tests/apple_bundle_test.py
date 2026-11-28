@@ -1,5 +1,6 @@
 """Read archived and directory iOS applications alike."""
 
+import stat
 import tempfile
 import unittest
 import zipfile
@@ -83,9 +84,27 @@ class AppleBundleTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             base = Path(temp)
             ipa = base / "game.ipa"
+            link = zipfile.ZipInfo("Payload/game.app/link")
+            link.external_attr = (stat.S_IFLNK | 0o777) << 16
+            for member in [zipfile.ZipInfo("../escape"), zipfile.ZipInfo("/abs"), link]:
+                with zipfile.ZipFile(ipa, "w") as archive:
+                    archive.writestr(member, b"")
+                with (
+                    self.subTest(member=member.filename),
+                    self.assertRaisesRegex(
+                        ValueError, "^Unsafe IPA archive member: " + member.filename
+                    ),
+                ):
+                    application_bundle(ipa, base / "work")
+
+    def test_an_archive_holds_one_application(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            ipa = base / "game.ipa"
             with zipfile.ZipFile(ipa, "w") as archive:
-                archive.writestr("../escape", b"")
-            with self.assertRaisesRegex(ValueError, "Unsafe IPA archive member"):
+                archive.writestr("Payload/a.app/Info.plist", b"plist")
+                archive.writestr("Payload/b.app/Info.plist", b"plist")
+            with self.assertRaisesRegex(ValueError, "Expected one application bundle"):
                 application_bundle(ipa, base / "work")
 
 

@@ -20,12 +20,18 @@ _ANDROID_SDK = ["//godot/platforms/private/tests:requires_android_sdk"]
 
 _MACOS = ["@platforms//os:macos"]
 
-# The beta inspectors and their unit tests.
+# The beta inspectors and their unit tests. beta_probe holds what the Android and iOS
+# checks share.
+py_library(
+    name = "beta_probe",
+    srcs = ["beta_probe.py"],
+)
 
 py_library(
     name = "validate_android_beta_lib",
     srcs = ["validate_android_beta.py"],
     deps = [
+        ":beta_probe",
         "//tools:digest_lib",
         "//tools/pack:pck_lib",
         "//tools/platforms:native_symbols_lib",
@@ -53,6 +59,7 @@ py_library(
     name = "validate_ios_beta_lib",
     srcs = ["validate_ios_beta.py"],
     deps = [
+        ":beta_probe",
         "//tools:digest_lib",
         "//tools/pack:pck_lib",
         "//tools/platforms:apple_bundle_lib",
@@ -125,7 +132,10 @@ py_test(
         "source_engine",
     ],
     target_compatible_with = _ANDROID_SDK,
-    deps = ["//tools/platforms:native_symbols_lib"],
+    deps = [
+        "//godot/platforms/private/tests:dex",
+        "//tools/platforms:native_symbols_lib",
+    ],
 )
 
 # Build-output tests: an APK with the prebuilt beta engine packages the shell AAR's engine,

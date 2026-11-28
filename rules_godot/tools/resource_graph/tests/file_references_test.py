@@ -2,7 +2,7 @@
 
 import unittest
 
-from tools.resource_graph.graph import file_references
+from tools.resource_graph.scan import file_references
 
 
 class FileReferencesTest(unittest.TestCase):

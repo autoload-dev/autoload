@@ -8,14 +8,8 @@ content reruns the writer and no Godot action that exports.
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
-load(
-    ":action_inputs.bzl",
-    "build_graph",
-    "expect_built_not_read",
-    "expect_built_reads",
-    "godot_actions",
-    "mnemonics_of",
-)
+load(":action_inputs.bzl", "godot_actions", "mnemonics_of")
+load(":built_graph.bzl", "build_graph", "expect_built_not_read", "expect_built_reads")
 load(":pack_forms.bzl", "PACK_CONVERSION")
 
 visibility("private")

@@ -33,6 +33,18 @@ def _dependencies(value):
         return value.keys()
     return [value]
 
+def _toolchain_actions(ctx):
+    toolchains = [
+        ctx.rule.toolchains[toolchain_type]
+        for toolchain_type in ["//godot:editor_toolchain_type", "//godot:runtime_toolchain_type"]
+        if toolchain_type in ctx.rule.toolchains
+    ]
+    return [
+        toolchain[_ReachedActionsInfo].actions
+        for toolchain in toolchains
+        if toolchain and _ReachedActionsInfo in toolchain
+    ]
+
 def _reached_actions_impl(target, ctx):
     own = [
         struct(owner = target.label, action = action)
@@ -45,11 +57,7 @@ def _reached_actions_impl(target, ctx):
         for dependency in _dependencies(getattr(ctx.rule.attr, attribute))
         if type(dependency) == "Target" and _ReachedActionsInfo in dependency
     ]
-    for toolchain_type in ["//godot:editor_toolchain_type", "//godot:runtime_toolchain_type"]:
-        toolchain = ctx.rule.toolchains[toolchain_type] if toolchain_type in ctx.rule.toolchains else None
-        if toolchain and _ReachedActionsInfo in toolchain:
-            transitive.append(toolchain[_ReachedActionsInfo].actions)
-    return [_ReachedActionsInfo(actions = depset(own, transitive = transitive))]
+    return [_ReachedActionsInfo(actions = depset(own, transitive = transitive + _toolchain_actions(ctx)))]
 
 _reached_actions = aspect(
     implementation = _reached_actions_impl,
@@ -78,10 +86,7 @@ def _test_engine_module_edit_reruns_engine_build_only(name):
         attr_values = {"target_compatible_with": ["@platforms//os:macos", "@platforms//cpu:aarch64"]},
     )
 
-def _engine_module_edit_reruns_engine_build_only(env, targets):
-    fixture = Label(_FIXTURE + ":app").package
-
-    # The module source is compiled by the engine's own native build and read by nothing else.
+def _expect_only_the_engine_compiles_the_module(env, targets, fixture):
     readers = [
         entry
         for entry in targets.app[_ReachedActionsInfo].actions.to_list()
@@ -92,7 +97,8 @@ def _engine_module_edit_reruns_engine_build_only(env, targets):
         env.expect.where(owner = str(entry.owner)).that_str(entry.action.mnemonic).equals("CppCompile")
         env.expect.where(owner = str(entry.owner)).that_str(entry.owner.package).equals(fixture)
 
-    # What the engine's build writes, from the module's object to the runtime executable.
+def _engine_build_outputs(env, targets, fixture):
+    """Return what the engine's build writes, from the module's object to the runtime executable."""
     built = {}
     for entry in _entries(targets.app, _NATIVE):
         if entry.owner.package == fixture:
@@ -101,15 +107,24 @@ def _engine_module_edit_reruns_engine_build_only(env, targets):
     runtime = targets.engines[ResolvedInfo].runtime
     env.expect.that_str(runtime.provenance.component).equals(str(Label(_FIXTURE + ":runtime_macos_arm64_release")))
     built.update(_paths(runtime.files.to_list()))
-    changed = [_MODULE_SOURCE] + sorted(built)
+    return sorted(built)
 
-    # The pack reads none of it.
+def _expect_no_pack_reads(env, targets, changed):
     packs = _entries(targets.app, ["GodotPack"])
     env.expect.that_int(len(packs)).is_greater_than(0)
     for entry in packs:
         inputs = _paths(entry.action.inputs.to_list())
         for path in changed:
             env.expect.where(mnemonic = "GodotPack", path = path).that_bool(path in inputs).equals(False)
+
+def _engine_module_edit_reruns_engine_build_only(env, targets):
+    fixture = Label(_FIXTURE + ":app").package
+
+    # Only the engine's native build reads the module source. The pack reads neither that
+    # source nor the build's outputs.
+    _expect_only_the_engine_compiles_the_module(env, targets, fixture)
+    changed = [_MODULE_SOURCE] + _engine_build_outputs(env, targets, fixture)
+    _expect_no_pack_reads(env, targets, changed)
 
     # GodotImport stages the editor toolchain's executable and files, which hold none of it.
     editor = targets.engines[ResolvedInfo].editor

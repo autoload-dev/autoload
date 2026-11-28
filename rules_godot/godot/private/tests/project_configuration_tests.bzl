@@ -437,6 +437,19 @@ def _test_custom_feature_with_a_dot_fails(name):
 def _test_reserved_custom_feature_fails(name):
     _custom_feature_failure_test(name, "arm64", "*custom feature arm64 is a feature tag Godot or the configuration sets")
 
+# An autoload name is an identifier: a letter or _ first, then letters, digits and _.
+def _test_autoload_name_that_is_no_identifier_fails(name):
+    projects = []
+    for index, autoload in enumerate(["", "1Menu", "Main-Menu"]):
+        godot_project(
+            name = "%s_project%d" % (name, index),
+            project_file = _PROJECT_FILE,
+            autoloads = {autoload: "res://menu.gd"},
+            tags = ["manual"],
+        )
+        projects.append("%s_project%d" % (name, index))
+    failure_test(name, projects, "*Invalid Godot autoload name: *")
+
 # A pack's own settings replace exported keys after its view checked its members, so they
 # name no main scene, also not one of a feature; add-ons and the project may.
 def _test_pack_settings_name_no_main_scene_of_a_feature(name):
@@ -626,6 +639,7 @@ def project_configuration_test_suite(name):
             _test_custom_features_follow_their_settings,
             _test_custom_feature_with_a_dot_fails,
             _test_reserved_custom_feature_fails,
+            _test_autoload_name_that_is_no_identifier_fails,
             _test_settings_from_flags_reach_only_exports,
             _test_two_flags_for_one_setting_fail,
             _test_list_flag_fails,

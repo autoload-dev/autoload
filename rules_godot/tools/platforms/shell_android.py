@@ -79,42 +79,62 @@ def permission_entries(declared: list[str], max_sdk: Mapping[str, str]) -> list[
 # ==== Manifest ================================================================
 
 
-def manifest(facts: Facts, values: Mapping[str, Any]) -> str:
-    """The manifest Godot's Android exporter writes."""
-    profile = values["profile"]
+def _version_code(facts: Facts, values: Mapping[str, Any]) -> int:
+    """Return the versionCode, which Google Play limits."""
+    limit = values["profile"]["max_version_code"]
     code = int(release_value(facts, values, "version/code", values["build_number"]))
-    if not 1 <= code <= profile["max_version_code"]:
-        raise ValueError(
-            f"Android versionCode must be from 1 to {profile['max_version_code']}, "
-            f"got {code}"
-        )
-    categories = profile["app_categories"]
+    if not 1 <= code <= limit:
+        raise ValueError(f"Android versionCode must be from 1 to {limit}, got {code}")
+    return code
+
+
+def _app_category(facts: Facts, categories: Sequence[str]) -> int:
+    """Return the category option, whose last value names no category."""
     category = facts.option("package/app_category")
     if not 0 <= category <= len(categories):
         raise ValueError(
             f"package/app_category must be from 0 to {len(categories)}, got {category}"
         )
+    return category
+
+
+def _vulkan_features(facts: Facts, vulkan: Mapping[str, Any], method: str) -> list[str]:
+    """Return the uses-feature elements of Vulkan, if the project renders with it."""
+    driver = facts.setting("rendering/rendering_device/driver.android")
+    if method not in vulkan["rendering_methods"] or driver != vulkan["driver"]:
+        return []
+    # Request Vulkan; require it only without the OpenGL fallback.
+    required = not facts.setting("rendering/rendering_device/fallback_to_opengl3")
+    return [
+        "    <uses-feature",
+        '        android:name="android.hardware.vulkan.level"',
+        '        android:required="false"',
+        '        android:version="1" />',
+        "",
+        "    <uses-feature",
+        '        android:name="android.hardware.vulkan.version"',
+        f'        android:required="{_bool(required)}"',
+        f'        android:version="{vulkan["version"]}" />',
+    ]
+
+
+# Debuggable builds register the plugin that passes bazel run's arguments.
+_LAUNCH_ARGUMENTS_PLUGIN = (
+    "        <meta-data\n"
+    '            android:name="org.godotengine.plugin.v2.RulesGodotLaunchArguments"\n'
+    '            android:value="com.godot.game.LaunchArgumentsPlugin" />\n'
+)
+
+
+def manifest(facts: Facts, values: Mapping[str, Any]) -> str:
+    """The manifest Godot's Android exporter writes."""
+    profile = values["profile"]
+    code = _version_code(facts, values)
+    categories = profile["app_categories"]
+    category = _app_category(facts, categories)
     declared = declared_permissions(facts)
     method = str(facts.setting("rendering/renderer/rendering_method"))
-    vulkan = profile["vulkan"]
-    features = []
-    if (
-        method in vulkan["rendering_methods"]
-        and facts.setting("rendering/rendering_device/driver.android") == vulkan["driver"]
-    ):
-        # Request Vulkan; require it only without the OpenGL fallback.
-        required = not facts.setting("rendering/rendering_device/fallback_to_opengl3")
-        features = [
-            "    <uses-feature",
-            '        android:name="android.hardware.vulkan.level"',
-            '        android:required="false"',
-            '        android:version="1" />',
-            "",
-            "    <uses-feature",
-            '        android:name="android.hardware.vulkan.version"',
-            f'        android:required="{_bool(required)}"',
-            f'        android:version="{vulkan["version"]}" />',
-        ]
+    features = _vulkan_features(facts, profile["vulkan"], method)
     name = facts.text("package/name") or facts.setting("application/config/name")
     short_version = release_value(facts, values, "version/name", values["app_version"])
     screens = {
@@ -155,13 +175,8 @@ def manifest(facts: Facts, values: Mapping[str, Any]) -> str:
                 any(name in declared for name in profile["storage_permissions"])
             ),
             "EDITOR_VERSION": xml(values["editor_version"]),
-            # Debuggable builds register the plugin that passes bazel run's arguments.
             "LAUNCH_ARGUMENTS_PLUGIN": (
-                "        <meta-data\n"
-                '            android:name="org.godotengine.plugin.v2.RulesGodotLaunchArguments"\n'
-                '            android:value="com.godot.game.LaunchArgumentsPlugin" />\n'
-                if values.get("launch_arguments")
-                else ""
+                _LAUNCH_ARGUMENTS_PLUGIN if values.get("launch_arguments") else ""
             ),
             "RENDERING_METHOD": xml(
                 facts.setting("rendering/renderer/rendering_method.mobile") or method
@@ -196,8 +211,8 @@ def command_line(facts: Facts, values: Mapping[str, Any]) -> list[str]:
     args = [arg for arg in facts.text("command_line/extra_args").split(" ") if arg]
     args += flags["xr_off"]
     args += [flag for option, flag in flags["flags"] if facts.option(option)]
-    # As Godot's Gradle export, whose themes this shell writes: with transparency the
-    # system bars' fallback color is transparent too.
+    # With transparency, the system bars' fallback color is transparent too, as in
+    # Godot's Gradle export, whose themes this shell writes.
     background = (
         "#00000000"
         if _transparent(facts)
@@ -273,9 +288,9 @@ def themes(
         splash["android:windowSplashScreenBrandingImage"] = (
             "@drawable/splash_branding_image"
         )
-    # Custom attributes extend the main theme, or with a [splash] prefix the splash
-    # theme. As in Godot's export they keep the main theme's attributes, may replace
-    # the splash screen's and never its link to the main theme or its translucency.
+    # Custom attributes extend the main theme, or the splash theme with a [splash]
+    # prefix. As in Godot's export, they keep the main theme's attributes. They may
+    # replace the splash screen's, but not its main theme link or translucency.
     for key, value in facts.option("gradle_build/custom_theme_attributes").items():
         if key.startswith("[splash]"):
             splash[key.removeprefix("[splash]")] = str(value)
@@ -294,6 +309,38 @@ def themes(
         "themes.xml.tpl", {"MAIN_ITEMS": items(main), "SPLASH_ITEMS": items(splash)}
     )
     return without_styles(text, defined_styles(overrides))
+
+
+def _reject_owned_attributes(
+    root: ElementTree.Element, consumer: Path, owned: Mapping[str, str]
+) -> None:
+    """Reject the attributes of <manifest> and <uses-sdk> that rules_godot owns."""
+    for element in [root, *root.findall("uses-sdk")]:
+        for attribute in element.attrib:
+            name = attribute.removeprefix(ANDROID)
+            if attribute.startswith(ANDROID) and name in owned:
+                raise ValueError(
+                    f"{consumer} sets android:{name} on <{element.tag}>, which belongs "
+                    f"to {owned[name]}; set it there instead"
+                )
+
+
+def _permission(element: ElementTree.Element) -> tuple[str, str | None]:
+    return element.tag, element.get(ANDROID + "name")
+
+
+def _undeclared_permissions(
+    shell: ElementTree.Element, root: ElementTree.Element
+) -> list[ElementTree.Element]:
+    """Return the shell's permission elements that the application does not declare."""
+    declared = {
+        _permission(element) for element in root if element.tag in PERMISSION_TAGS
+    }
+    return [
+        element
+        for element in shell
+        if element.tag in PERMISSION_TAGS and _permission(element) not in declared
+    ]
 
 
 def main_manifest(shell_text: str, consumer: Path, owned: Mapping[str, str]) -> str:
@@ -317,30 +364,13 @@ def main_manifest(shell_text: str, consumer: Path, owned: Mapping[str, str]) -> 
     root = ElementTree.parse(consumer, parser).getroot()
     if root.tag != "manifest":
         raise ValueError(f"{consumer} is not an Android manifest")
-    for element in [root, *root.findall("uses-sdk")]:
-        for attribute in element.attrib:
-            name = attribute.removeprefix(ANDROID)
-            if attribute.startswith(ANDROID) and name in owned:
-                raise ValueError(
-                    f"{consumer} sets android:{name} on <{element.tag}>, which belongs "
-                    f"to {owned[name]}; set it there instead"
-                )
+    _reject_owned_attributes(root, consumer, owned)
     for attribute, value in shell.attrib.items():
         if attribute.startswith(ANDROID):
             root.attrib.setdefault(attribute, value)
     shell_sdk = shell.find("uses-sdk")
     assert shell_sdk is not None
-    declared = {
-        (element.tag, element.get(ANDROID + "name"))
-        for element in root
-        if element.tag in PERMISSION_TAGS
-    }
-    added = [
-        element
-        for element in shell
-        if element.tag in PERMISSION_TAGS
-        and (element.tag, element.get(ANDROID + "name")) not in declared
-    ]
+    added = _undeclared_permissions(shell, root)
     sdk = root.find("uses-sdk")
     if sdk is None:
         added.insert(0, shell_sdk)

@@ -40,3 +40,13 @@ py_test(
         "//tools/resources:node_ids_lib",
     ],
 )
+
+py_test(
+    name = "shell_assets_test",
+    size = "small",
+    srcs = ["shell_assets_test.py"],
+    deps = [
+        "//tools/editor_action:export_lib",
+        "//tools/editor_action:shell_assets_lib",
+    ],
+)

@@ -8,18 +8,8 @@ pack runs.
 
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load(
-    ":action_inputs.bzl",
-    "build_graph",
-    "expect_built_mentions",
-    "expect_built_not_read",
-    "expect_built_reads",
-    "expect_built_reads_output_of",
-    "expect_mentioned_only_by",
-    "expect_not_built",
-    "expect_not_read",
-    "godot_actions",
-)
+load(":action_inputs.bzl", "expect_not_read", "godot_actions")
+load(":built_graph.bzl", "build_graph", "expect_built_mentions", "expect_built_not_read", "expect_built_reads", "expect_built_reads_output_of", "expect_mentioned_only_by", "expect_not_built")
 load(":pack_forms.bzl", "GODOT_EXPORT")
 
 visibility("private")

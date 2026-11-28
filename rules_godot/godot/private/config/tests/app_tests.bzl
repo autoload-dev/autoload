@@ -114,76 +114,66 @@ def _test_simulator_app_links_runtime_component_of_its_platform_slice(name):
 # deployment target its runtime was built for, nor below what an extension requires. The
 # runtime slots come from engines/floor.
 
-def _test_macos_minimum_below_runtime_deployment_target_fails(name):
+def _floor_app_test(name, impl, expect_failure, config_settings = _FLOOR_ENGINES, **app_attributes):
+    """Analyze an app with the attributes on the runtime slots of engines/floor."""
     godot_app(
         name = name + "_app",
-        macos_minimum_os_version = "10.15",
-        pack = ":app_pack",
         tags = ["manual"],
+        **app_attributes
     )
     analysis_test(
         name = name,
         target = name + "_app",
-        impl = _macos_minimum_below_runtime_deployment_target_fails,
-        expect_failure = True,
-        config_settings = _FLOOR_ENGINES,
+        impl = impl,
+        expect_failure = expect_failure,
+        config_settings = config_settings,
         attr_values = _MACOS_HOST,
+    )
+
+def _test_macos_minimum_below_runtime_deployment_target_fails(name):
+    _floor_app_test(
+        name,
+        _macos_minimum_below_runtime_deployment_target_fails,
+        expect_failure = True,
+        macos_minimum_os_version = "10.15",
+        pack = ":app_pack",
     )
 
 def _macos_minimum_below_runtime_deployment_target_fails(env, target):
     _expect_failure(env, target, "macos_minimum_os_version 10.15 is below the deployment target 11.0 of the runtime")
 
 def _test_ios_minimum_below_runtime_deployment_target_fails(name):
-    godot_app(
-        name = name + "_app",
+    _floor_app_test(
+        name,
+        _ios_minimum_below_runtime_deployment_target_fails,
+        expect_failure = True,
+        config_settings = _DEBUG_SIMULATOR | _FLOOR_ENGINES,
         application_id = "org.example.floor",
         ios_minimum_os_version = "11.0",
         pack = ":app_pack",
-        tags = ["manual"],
-    )
-    analysis_test(
-        name = name,
-        target = name + "_app",
-        impl = _ios_minimum_below_runtime_deployment_target_fails,
-        expect_failure = True,
-        config_settings = _DEBUG_SIMULATOR | _FLOOR_ENGINES,
-        attr_values = _MACOS_HOST,
     )
 
 def _ios_minimum_below_runtime_deployment_target_fails(env, target):
     _expect_failure(env, target, "ios_minimum_os_version 11.0 is below the deployment target 12.0 of the runtime")
 
 def _test_macos_minimum_below_extension_requirement_fails(name):
-    godot_app(
-        name = name + "_app",
-        pack = ":demanding_pack",
-        tags = ["manual"],
-    )
-    analysis_test(
-        name = name,
-        target = name + "_app",
-        impl = _macos_minimum_below_extension_requirement_fails,
+    _floor_app_test(
+        name,
+        _macos_minimum_below_extension_requirement_fails,
         expect_failure = True,
-        config_settings = _FLOOR_ENGINES,
-        attr_values = _MACOS_HOST,
+        pack = ":demanding_pack",
     )
 
 def _macos_minimum_below_extension_requirement_fails(env, target):
     _expect_failure(env, target, "extension demanding_init requires macOS 13.0; macos_minimum_os_version is 11.0")
 
 def _test_macos_minimum_meeting_extension_requirement_analyzes(name):
-    godot_app(
-        name = name + "_app",
+    _floor_app_test(
+        name,
+        _analyzes,
+        expect_failure = False,
         macos_minimum_os_version = "13.0",
         pack = ":demanding_pack",
-        tags = ["manual"],
-    )
-    analysis_test(
-        name = name,
-        target = name + "_app",
-        impl = _analyzes,
-        config_settings = _FLOOR_ENGINES,
-        attr_values = _MACOS_HOST,
     )
 
 def _test_extension_rejects_unknown_minimum_os_key(name):
@@ -228,6 +218,24 @@ def _test_desktop_app_rejects_platform_deps_and_resources(name):
 
 def _desktop_app_rejects_platform_deps_and_resources(env, target):
     _expect_failure(env, target, "does not support nonempty platform_deps or platform_resources")
+
+def _test_desktop_app_name_with_separator_fails(name):
+    """The application's filename comes from the godot_app's name, which may hold a slash."""
+    godot_app(
+        name = name + "_dir/app",
+        pack = ":app_pack",
+        tags = ["manual"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_dir/app",
+        impl = _desktop_app_name_with_separator_fails,
+        expect_failure = True,
+        attr_values = _SMALL,
+    )
+
+def _desktop_app_name_with_separator_fails(env, target):
+    _expect_failure(env, target, "app_name must be a filename without separators")
 
 def _fails_with_message(env, target):
     _expect_failure(env, target, env.ctx.attr.message)
@@ -285,6 +293,7 @@ def app_test_suite(name):
             _test_macos_minimum_meeting_extension_requirement_analyzes,
             _test_extension_rejects_unknown_minimum_os_key,
             _test_desktop_app_rejects_platform_deps_and_resources,
+            _test_desktop_app_name_with_separator_fails,
             _test_mobile_platform_without_export_platform_fails,
             _test_desktop_platform_with_unsupported_cpu_fails,
         ],

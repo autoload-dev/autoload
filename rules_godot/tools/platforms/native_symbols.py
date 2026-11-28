@@ -83,17 +83,8 @@ def elf_file_build_id(data: bytes) -> str | None:
 # ==== Mach-O files ============================================================
 
 
-def macho_slices(data: Binary) -> list[tuple[int, int]]:
-    """
-    Return the offset and size of each CPU of a little-endian Mach-O file.
-
-    A thin file is its own single CPU.
-    """
-    magic = data[:4].hex()
-    if magic in _MACHO_THIN:
-        return [(0, len(data))]
-    if magic not in _MACHO_UNIVERSAL:
-        raise ValueError("not a little-endian Mach-O file")
+def _universal_slices(data: Binary, magic: str) -> list[tuple[int, int]]:
+    """Return the offset and size of each CPU of a universal Mach-O file."""
     if len(data) < 8:
         raise ValueError("Truncated universal header")
     (count,) = struct.unpack_from(">I", data, 4)
@@ -112,21 +103,40 @@ def macho_slices(data: Binary) -> list[tuple[int, int]]:
     return slices
 
 
+def macho_slices(data: Binary) -> list[tuple[int, int]]:
+    """
+    Return the offset and size of each CPU of a little-endian Mach-O file.
+
+    A thin file is its own single CPU.
+    """
+    magic = data[:4].hex()
+    if magic in _MACHO_THIN:
+        return [(0, len(data))]
+    if magic not in _MACHO_UNIVERSAL:
+        raise ValueError("not a little-endian Mach-O file")
+    return _universal_slices(data, magic)
+
+
+def _macho_header(data: Binary, offset: int, end: int) -> tuple[int, int, int]:
+    """Return the load commands' count, start and end of the thin Mach-O file at offset."""
+    magic = data[offset : offset + 4].hex()
+    if magic not in _MACHO_THIN:
+        raise ValueError("not a little-endian thin Mach-O file")
+    start = offset + (32 if magic == "cffaedfe" else 28)
+    if start > end:
+        raise ValueError("Truncated Mach-O header")
+    count, command_bytes = struct.unpack_from("<II", data, offset + 16)
+    if start + command_bytes > end:
+        raise ValueError("Truncated Mach-O load commands")
+    return count, start, start + command_bytes
+
+
 def macho_load_commands(
     data: Binary, offset: int = 0, size: int | None = None
 ) -> Iterator[tuple[int, int, int]]:
     """Yield the type, offset and size of each load command of a thin Mach-O file."""
     end = len(data) if size is None else offset + size
-    magic = data[offset : offset + 4].hex()
-    if magic not in _MACHO_THIN:
-        raise ValueError("not a little-endian thin Mach-O file")
-    position = offset + (32 if magic == "cffaedfe" else 28)
-    if position > end:
-        raise ValueError("Truncated Mach-O header")
-    count, command_bytes = struct.unpack_from("<II", data, offset + 16)
-    commands_end = position + command_bytes
-    if commands_end > end:
-        raise ValueError("Truncated Mach-O load commands")
+    count, position, commands_end = _macho_header(data, offset, end)
     for _ in range(count):
         if position + 8 > commands_end:
             raise ValueError("Truncated Mach-O load command")
@@ -153,6 +163,29 @@ def macho_uuids(data: Binary) -> list[str]:
 
 _MACHO_CPUS = {0x100000C: "arm64", 0x1000007: "x86_64"}
 
+# The load commands that name an SDK: LC_BUILD_VERSION, LC_VERSION_MIN_MACOSX and
+# LC_VERSION_MIN_IPHONEOS.
+_BUILD_VERSION = 0x32
+
+_VERSION_MIN_MACOS = 0x24
+
+_VERSION_MIN_IOS = 0x25
+
+
+def _command_sdk(
+    data: Binary, load_command: tuple[int, int, int], cpu: str
+) -> str | None:
+    """Return the Apple SDK that the load command names, or None for an unknown platform."""
+    command, position, length = load_command
+    if command == _VERSION_MIN_MACOS:
+        return "macos"
+    if command == _VERSION_MIN_IOS:
+        return "ios_device" if cpu == "arm64" else "ios_simulator"
+    if length < 24:
+        raise ValueError("Truncated Mach-O build version")
+    value = struct.unpack_from("<I", data, position + 8)[0]
+    return {1: "macos", 2: "ios_device", 7: "ios_simulator"}.get(value)
+
 
 def _macho_identity(data: Binary, offset: int, size: int) -> tuple[str, str | None]:
     """Return the CPU and Apple SDK, if named, of the thin Mach-O file at offset."""
@@ -162,17 +195,11 @@ def _macho_identity(data: Binary, offset: int, size: int) -> tuple[str, str | No
     cpu = _MACHO_CPUS.get(cpu_value)
     if not cpu:
         raise ValueError(f"Unsupported Mach-O CPU type {cpu_value}")
+    # The last command that names an SDK decides.
     sdk = None
-    for command, position, length in macho_load_commands(data, offset, size):
-        if command == 0x32:
-            if length < 24:
-                raise ValueError("Truncated Mach-O build version")
-            value = struct.unpack_from("<I", data, position + 8)[0]
-            sdk = {1: "macos", 2: "ios_device", 7: "ios_simulator"}.get(value)
-        elif command == 0x24:
-            sdk = "macos"
-        elif command == 0x25:
-            sdk = "ios_device" if cpu == "arm64" else "ios_simulator"
+    for load_command in macho_load_commands(data, offset, size):
+        if load_command[0] in {_BUILD_VERSION, _VERSION_MIN_MACOS, _VERSION_MIN_IOS}:
+            sdk = _command_sdk(data, load_command, cpu)
     return cpu, sdk
 
 
@@ -226,15 +253,46 @@ def _archive_slices(data: Binary, offset: int, size: int) -> dict[str, str]:
         if data[start : start + 4].hex() not in _MACHO_THIN:
             continue
         cpu, sdk = _macho_identity(data, start, length)
-        if sdk:
-            if result.get(cpu, sdk) != sdk:
-                raise ValueError(
-                    f"Static library objects of {cpu} differ in SDK: "
-                    f"{result[cpu]} and {sdk}"
-                )
-            result[cpu] = sdk
-        else:
-            result.setdefault(cpu, "")
+        known = result.setdefault(cpu, sdk or "")
+        if sdk and known != sdk:
+            raise ValueError(
+                f"Static library objects of {cpu} differ in SDK: {known} and {sdk}"
+            )
+    return result
+
+
+def _elf_slice(data: Binary) -> dict[str, tuple[str, int, int]]:
+    """
+    Return the CPU of an ELF file.
+
+    Its code is the whole file, and "elf" stands in for the SDK.
+    """
+    if data[4] not in {1, 2} or data[5] not in {1, 2}:
+        raise ValueError("Unsupported ELF encoding")
+    machine = struct.unpack_from(("<" if data[5] == 1 else ">") + "H", data, 18)[0]
+    cpu = _ELF_CPUS.get(machine)
+    if not cpu:
+        raise ValueError(f"Unsupported ELF machine {machine}")
+    return {cpu: ("elf", 0, len(data))}
+
+
+def _slice_identities(data: Binary, offset: int, size: int) -> dict[str, str]:
+    """Return the CPUs and SDK of one slice, a thin Mach-O file or a static library."""
+    if data[offset : offset + len(_ARCHIVE)] == _ARCHIVE:
+        return _archive_slices(data, offset, size)
+    return dict([_macho_slice(data, offset, size)])
+
+
+def _macho_file_slices(data: Binary) -> dict[str, tuple[str, int, int]]:
+    """Return each CPU's SDK and the offset and size of its code in a Mach-O file."""
+    if data[:4].hex() not in {"cffaedfe", "cafebabe", "cafebabf"}:
+        raise ValueError("Unsupported native binary format")
+    result = {}
+    for offset, size in macho_slices(data):
+        for cpu, sdk in _slice_identities(data, offset, size).items():
+            if cpu in result:
+                raise ValueError("Duplicate CPU slice")
+            result[cpu] = (sdk, offset, size)
     return result
 
 
@@ -247,27 +305,9 @@ def _slices(data: Binary) -> dict[str, tuple[str, int, int]]:
         }
     if len(data) < 20:
         raise ValueError("Truncated native header")
-    if data[:4] == b"\x7fELF":
-        if data[4] not in {1, 2} or data[5] not in {1, 2}:
-            raise ValueError("Unsupported ELF encoding")
-        machine = struct.unpack_from(("<" if data[5] == 1 else ">") + "H", data, 18)[0]
-        cpu = _ELF_CPUS.get(machine)
-        if not cpu:
-            raise ValueError(f"Unsupported ELF machine {machine}")
-        return {cpu: ("elf", 0, len(data))}
-    if data[:4].hex() not in {"cffaedfe", "cafebabe", "cafebabf"}:
-        raise ValueError("Unsupported native binary format")
-    result = {}
-    for offset, size in macho_slices(data):
-        if data[offset : offset + len(_ARCHIVE)] == _ARCHIVE:
-            found = _archive_slices(data, offset, size)
-        else:
-            found = dict([_macho_slice(data, offset, size)])
-        for cpu, sdk in found.items():
-            if cpu in result:
-                raise ValueError("Duplicate CPU slice")
-            result[cpu] = (sdk, offset, size)
-    return result
+    if data[:4] == _ELF:
+        return _elf_slice(data)
+    return _macho_file_slices(data)
 
 
 def native_slices(data: Binary) -> dict[str, str]:
@@ -280,7 +320,7 @@ def native_slices(data: Binary) -> dict[str, str]:
 
 
 def require_slices(data: Binary, cpus: set[str], sdk: str, origin: str) -> None:
-    """Reject extra/missing CPUs and incompatible SDK identities at delivery."""
+    """Reject a delivered binary whose CPUs or SDK differ from the requested ones."""
     actual = native_slices(data)
     if set(actual) != cpus:
         raise ValueError(
@@ -323,8 +363,8 @@ def strip(tool: str, options: list[str], source: str, output: str) -> None:
         shutil.copyfile(source, output)
     os.chmod(output, 0o755)
     if form == "macho":
-        # Stripping invalidates the signature, and arm64 runs only signed code;
-        # sign ad hoc as the linker does. godot_app optionally signs the complete bundle.
+        # Stripping invalidates the signature, and arm64 Macs run only signed code.
+        # The tool signs ad hoc, as the linker does; godot_app can sign the whole bundle.
         subprocess.run(
             ["/usr/bin/codesign", "--force", "--sign", "-", output],
             check=True,

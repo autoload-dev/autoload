@@ -325,92 +325,104 @@ def _cpu_rows(suffixes):
         for cpu, suffix in suffixes.items()
     ]
 
+_DESKTOP_ARCHITECTURE = _owned(
+    "binary_format/architecture",
+    "export_platform",
+    derive = "first_cpu",
+    placement = "prelude",
+    when = "always",
+    authored = "reject",
+)
+
+_NO_EMBEDDED_PACK = _owned(
+    "binary_format/embed_pck",
+    "output-layout",
+    derive = "constant",
+    placement = "prelude",
+    when = "always",
+    authored = "reject",
+    value = False,
+)
+
+_BUNDLE_IDENTIFIER = _owned(
+    "application/bundle_identifier",
+    "identity",
+    derive = "application_value",
+    placement = "pack",
+    when = "application_identity",
+    authored = "match",
+    source = "application_id",
+)
+
+def _macos_owned_options():
+    return [
+        _DESKTOP_ARCHITECTURE,
+        # Godot stores this unregistered value; a plugin can register it and
+        # an authored value then overrides the prelude.
+        _NO_EMBEDDED_PACK | {
+            "authored": "live",
+            "exception": "Retain the observable unregistered prefix and registered-plugin override; remove only with behavior-equivalence evidence or separately approved behavior change.",
+        },
+        _BUNDLE_IDENTIFIER,
+    ] + [
+        _owned(
+            "application/min_macos_version_" + cpu,
+            "macos-deployment",
+            derive = "application_value",
+            placement = "pack",
+            when = "macos_application",
+            authored = "match",
+            source = "macos_minimum_os_version",
+        )
+        for cpu in ["arm64", "x86_64"]
+    ]
+
+def _android_owned_options(profile):
+    return _cpu_rows(profile["android"]["abis"]) + [
+        _BUNDLE_IDENTIFIER | {"key": "package/unique_name"},
+    ] + [
+        _owned(
+            "gradle_build/%s_sdk" % sdk,
+            "android-sdk",
+            derive = "android_sdk",
+            placement = "pack",
+            when = "android_application",
+            authored = "reject",
+            sdk = sdk,
+        )
+        for sdk in ["min", "target"]
+    ]
+
+def _ios_owned_options(profile):
+    return _cpu_rows({cpu: cpu for cpu in profile["ios"]["cpus"]}) + [
+        _BUNDLE_IDENTIFIER,
+        _owned(
+            "application/min_ios_version",
+            "ios-deployment",
+            derive = "application_value",
+            placement = "pack",
+            when = "ios_application",
+            authored = "match",
+            source = "ios_minimum_os_version",
+        ),
+        _owned(
+            "application/targeted_device_family",
+            "ios-deployment",
+            derive = "application_enum",
+            placement = "pack",
+            when = "ios_application",
+            authored = "match",
+            source = "ios_families",
+            choices = {"iphone": 0, "ipad": 1, "ipad,iphone": 2},
+        ),
+    ]
+
 def _owned_options(profile):
-    desktop = _owned(
-        "binary_format/architecture",
-        "export_platform",
-        derive = "first_cpu",
-        placement = "prelude",
-        when = "always",
-        authored = "reject",
-    )
-    fixed = _owned(
-        "binary_format/embed_pck",
-        "output-layout",
-        derive = "constant",
-        placement = "prelude",
-        when = "always",
-        authored = "reject",
-        value = False,
-    )
-    identity = _owned(
-        "application/bundle_identifier",
-        "identity",
-        derive = "application_value",
-        placement = "pack",
-        when = "application_identity",
-        authored = "match",
-        source = "application_id",
-    )
     return {
-        "linux": [desktop, fixed],
-        "macos": [
-            desktop,
-            # Godot stores this unregistered value; a plugin can register it and
-            # an authored value then overrides the prelude.
-            fixed | {
-                "authored": "live",
-                "exception": "Retain the observable unregistered prefix and registered-plugin override; remove only with behavior-equivalence evidence or separately approved behavior change.",
-            },
-            identity,
-        ] + [
-            _owned(
-                "application/min_macos_version_" + cpu,
-                "macos-deployment",
-                derive = "application_value",
-                placement = "pack",
-                when = "macos_application",
-                authored = "match",
-                source = "macos_minimum_os_version",
-            )
-            for cpu in ["arm64", "x86_64"]
-        ],
-        "android": _cpu_rows(profile["android"]["abis"]) + [
-            identity | {"key": "package/unique_name"},
-        ] + [
-            _owned(
-                "gradle_build/%s_sdk" % sdk,
-                "android-sdk",
-                derive = "android_sdk",
-                placement = "pack",
-                when = "android_application",
-                authored = "reject",
-                sdk = sdk,
-            )
-            for sdk in ["min", "target"]
-        ],
-        "ios": _cpu_rows({cpu: cpu for cpu in profile["ios"]["cpus"]}) + [
-            identity,
-            _owned(
-                "application/min_ios_version",
-                "ios-deployment",
-                derive = "application_value",
-                placement = "pack",
-                when = "ios_application",
-                authored = "match",
-                source = "ios_minimum_os_version",
-            ),
-            _owned(
-                "application/targeted_device_family",
-                "ios-deployment",
-                derive = "application_enum",
-                placement = "pack",
-                when = "ios_application",
-                authored = "match",
-                source = "ios_families",
-                choices = {"iphone": 0, "ipad": 1, "ipad,iphone": 2},
-            ),
-        ],
+        "linux": [_DESKTOP_ARCHITECTURE, _NO_EMBEDDED_PACK],
+        "macos": _macos_owned_options(),
+        "android": _android_owned_options(profile),
+        "ios": _ios_owned_options(profile),
     }
 
 _GODOT_4_7["owned_export_options"] = _owned_options(_GODOT_4_7)

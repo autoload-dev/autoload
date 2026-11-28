@@ -108,6 +108,13 @@ class ResourceUidTest(unittest.TestCase):
             with_resource_uids(scene, "levels/one.tscn", _UIDS),
         )
 
+    def test_references_without_a_path_in_the_project_stay(self) -> None:
+        scene = (
+            '[ext_resource type="Script" uid="uid://main" id="1"]\n'
+            '[ext_resource type="Script" path="../../main.gd" id="2"]\n'
+        )
+        self.assertEqual(scene, with_resource_uids(scene, "levels/one.tscn", _UIDS))
+
     def test_a_reference_without_type_gets_its_uid_first(self) -> None:
         self.assertEqual(
             '[ext_resource uid="uid://main" path="res://main.gd" id="1"]\n',

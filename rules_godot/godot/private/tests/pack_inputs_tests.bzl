@@ -9,18 +9,8 @@ case reruns, and no input of the other actions a build of the pack runs.
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
-load(
-    ":action_inputs.bzl",
-    "build_graph",
-    "expect_built_mentions",
-    "expect_built_not_read",
-    "expect_built_reads",
-    "expect_import_lists",
-    "expect_mentioned_only_by",
-    "expect_not_read",
-    "expect_unreached",
-    "godot_actions",
-)
+load(":action_inputs.bzl", "expect_import_lists", "expect_not_read", "godot_actions")
+load(":built_graph.bzl", "build_graph", "expect_built_mentions", "expect_built_not_read", "expect_built_reads", "expect_mentioned_only_by", "expect_unreached")
 load(":pack_forms.bzl", "GODOT_EXPORT")
 
 visibility("private")

@@ -25,17 +25,27 @@ CACHE = ".godot/global_script_class_cache.cfg"
 Base = dict
 
 
+# How each bracket changes the nesting of arguments.
+_NESTING = {"(": 1, ")": -1}
+
+
 def skip_arguments(script: list, index: int) -> int:
-    """Return the index after the parenthesized arguments starting at script[index]."""
+    """Return the index after the parenthesized arguments that open at script[index]."""
     depth = 0
     for position in range(index, len(script)):
-        if script[position][1] == "(":
-            depth += 1
-        elif script[position][1] == ")":
-            depth -= 1
-            if not depth:
-                return position + 1
+        depth += _NESTING.get(script[position][1], 0)
+        if not depth:
+            return position + 1
     return len(script)
+
+
+def _continues_chain(script: list, index: int) -> bool:
+    """Whether script[index] starts `.Name`, the next link of a name chain."""
+    return (
+        index + 1 < len(script)
+        and script[index][1] == "."
+        and script[index + 1][0] == "identifier"
+    )
 
 
 def _base(script: list, index: int) -> tuple[Base, int]:
@@ -48,14 +58,71 @@ def _base(script: list, index: int) -> tuple[Base, int]:
     elif index < len(script) and script[index][0] == "identifier":
         names.append(script[index][1])
         index += 1
-    while (
-        index + 1 < len(script)
-        and script[index][1] == "."
-        and script[index + 1][0] == "identifier"
-    ):
+    while _continues_chain(script, index):
         names.append(script[index + 1][1])
         index += 2
     return {"path": path, "names": names}, index
+
+
+def _annotation(script: list, index: int) -> tuple[str, str | None, int]:
+    """
+    Read the annotation whose name is at script[index].
+
+    Returns its name, the path of an `@icon("path")` or else None, and the next index.
+    """
+    name = script[index][1]
+    index += 1
+    if index >= len(script) or script[index][1] != "(":
+        return name, None, index
+    icon = None
+    if name == "icon" and script[index + 1][0] == "string":
+        icon = script[index + 1][1]
+    return name, icon, skip_arguments(script, index)
+
+
+def _declaration(script: list, index: int, header: dict) -> int:
+    """Read the class_name or extends at script[index] into header; return the next index."""
+    if script[index][1] == "extends":
+        header["base"], index = _base(script, index + 1)
+        return index
+    if index + 1 < len(script) and script[index + 1][0] == "identifier":
+        header["class"] = script[index + 1][1]
+    return index + 2
+
+
+def _script_class(script: list, header: dict) -> int:
+    """Read the script's own annotations, class_name and extends; return where they end."""
+    abstract = False
+    index = 0
+    while index < len(script):
+        category, value, _ = script[index]
+        if value == "@" and index + 1 < len(script):
+            annotation, icon, index = _annotation(script, index + 1)
+            if icon is not None:
+                header["icon"] = icon
+            header["is_tool"] |= annotation == "tool"
+            abstract |= annotation == "abstract"
+        elif category == "identifier" and value in ("class_name", "extends"):
+            index = _declaration(script, index, header)
+            # An @abstract before class_name or extends belongs to the class.
+            header["is_abstract"] |= abstract
+            abstract = False
+        else:
+            # The first member ends the header; its annotations are the member's.
+            break
+    return index
+
+
+def _inner_bases(script: list, index: int) -> dict[str, Base | None]:
+    """The bases of the inner classes declared from script[index] on, by class name."""
+    inner = {}
+    for position in range(index, len(script) - 2):
+        if script[position][1] == "class" and script[position + 1][0] == "identifier":
+            base = None
+            if script[position + 2][1] == "extends":
+                base, _ = _base(script, position + 3)
+            inner.setdefault(script[position + 1][1], base)
+    return inner
 
 
 def script_header(text: str) -> dict:
@@ -78,40 +145,7 @@ def script_header(text: str) -> dict:
         "icon": "",
         "inner": {},
     }
-    abstract = False
-    index = 0
-    while index < len(script):
-        category, value, _ = script[index]
-        if value == "@" and index + 1 < len(script):
-            annotation = script[index + 1][1]
-            index += 2
-            if index < len(script) and script[index][1] == "(":
-                end = skip_arguments(script, index)
-                if annotation == "icon" and script[index + 1][0] == "string":
-                    header["icon"] = script[index + 1][1]
-                index = end
-            header["is_tool"] |= annotation == "tool"
-            abstract |= annotation == "abstract"
-        elif category == "identifier" and value == "class_name":
-            if index + 1 < len(script) and script[index + 1][0] == "identifier":
-                header["class"] = script[index + 1][1]
-            header["is_abstract"] |= abstract
-            abstract = False
-            index += 2
-        elif category == "identifier" and value == "extends":
-            header["base"], index = _base(script, index + 1)
-            header["is_abstract"] |= abstract
-            abstract = False
-        else:
-            # The first member ends the header; its annotations are the member's.
-            break
-    for position in range(index, len(script) - 2):
-        if script[position][1] == "class" and script[position + 1][0] == "identifier":
-            name = script[position + 1][1]
-            base = None
-            if script[position + 2][1] == "extends":
-                base, _ = _base(script, position + 3)
-            header["inner"].setdefault(name, base)
+    header["inner"] = _inner_bases(script, _script_class(script, header))
     return header
 
 
@@ -142,9 +176,12 @@ def _resolve(
     if path is None:
         # A chain such as Outer.Inner records no base.
         return names[0] if len(names) == 1 else ""
-    # Godot opens the path as written; a relative one is no script it can scan.
+    # A script path followed by a chain of inner classes records no base either.
+    if len(names) > 1:
+        return ""
+    # Godot opens the path as written, so a relative path names no script it scans.
     parent = scripts.get(path)
-    if parent is None or path in visiting or len(names) > 1:
+    if parent is None or path in visiting:
         return ""
     visiting = visiting | {path}
     if not names:
@@ -156,6 +193,25 @@ def _resolve(
 
 def _string(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
+
+
+def _boolean(value: bool) -> str:
+    return "true" if value else "false"
+
+
+def _cache_entry(script: dict, scripts: dict[str, dict], is_tool: bool) -> str:
+    """The class cache's entry for a named script, as Godot writes it."""
+    return (
+        "{\n"
+        + f'"base": &{_string(_resolve(script["base"], scripts, frozenset()))},\n'
+        + f'"class": &{_string(script["class"])},\n'
+        + f'"icon": {_string(script["icon"])},\n'
+        + f'"is_abstract": {_boolean(script["is_abstract"])},\n'
+        + f'"is_tool": {_boolean(is_tool)},\n'
+        + '"language": &"GDScript",\n'
+        + f'"path": {_string(script["path"])}\n'
+        + "}"
+    )
 
 
 def class_cache(fragments: Iterable[list[dict]], tool_annotations: bool = True) -> str:
@@ -173,15 +229,7 @@ def class_cache(fragments: Iterable[list[dict]], tool_annotations: bool = True) 
     """
     scripts = {script["path"]: script for each in fragments for script in each}
     entries = [
-        "{\n"
-        + f'"base": &{_string(_resolve(script["base"], scripts, frozenset()))},\n'
-        + f'"class": &{_string(script["class"])},\n'
-        + f'"icon": {_string(script["icon"])},\n'
-        + f'"is_abstract": {"true" if script["is_abstract"] else "false"},\n'
-        + f'"is_tool": {"true" if tool_annotations and script["is_tool"] else "false"},\n'
-        + '"language": &"GDScript",\n'
-        + f'"path": {_string(script["path"])}\n'
-        + "}"
+        _cache_entry(script, scripts, tool_annotations and script["is_tool"])
         for script in sorted(
             scripts.values(), key=lambda script: (script["class"], script["path"])
         )

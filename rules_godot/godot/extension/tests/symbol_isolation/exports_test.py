@@ -15,6 +15,15 @@ FIXTURE = "godot/extension/tests/symbol_isolation"
 PROBES = ["Alpha", "Beta"]
 
 
+# The ELF symbol bindings that export a symbol: global, weak and GNU unique.
+ELF_EXPORTING_BINDINGS = (1, 2, 10)
+
+
+def elf_exported(info: int, other: int, section: int) -> bool:
+    """Whether an ELF symbol is defined, binds to export and has default visibility."""
+    return bool(section) and info >> 4 in ELF_EXPORTING_BINDINGS and other & 3 == 0
+
+
 def elf_exports(data: bytes) -> set[str]:
     """Return the defined, default-visibility global, weak and GNU unique symbols of a 64-bit ELF file."""
     sections = elf_sections(data)
@@ -22,26 +31,50 @@ def elf_exports(data: bytes) -> set[str]:
     exports = set()
     for offset in range(0, len(table), 24):
         name, info, other, section = struct.unpack_from("<IBBH", table, offset)
-        if section and info >> 4 in (1, 2, 10) and other & 3 == 0:
+        if elf_exported(info, other, section):
             exports.add(strings[name : strings.index(b"\0", name)].decode())
+    return exports
+
+
+# Bits of a Mach-O symbol's n_type. MACHO_EXTERNAL marks an external symbol. Any bit of
+# MACHO_HIDDEN marks a private external or a debug entry. A symbol defined in a section has
+# every bit of MACHO_DEFINED_IN_SECTION set.
+MACHO_EXTERNAL = 0x01
+MACHO_HIDDEN = 0xF0
+MACHO_DEFINED_IN_SECTION = 0x0E
+
+
+def macho_exported(kind: int) -> bool:
+    """Whether a Mach-O symbol is exported: external, not hidden and defined in a section."""
+    return (
+        bool(kind & MACHO_EXTERNAL)
+        and not kind & MACHO_HIDDEN
+        and kind & MACHO_DEFINED_IN_SECTION == MACHO_DEFINED_IN_SECTION
+    )
+
+
+def symbol_table_exports(data: bytes, position: int) -> set[str]:
+    """Return the exported symbols of the LC_SYMTAB load command at position, as C names."""
+    symbols, count, strings, _ = struct.unpack_from("<IIII", data, position + 8)
+    exports = set()
+    for index in range(count):
+        name, kind = struct.unpack_from("<IB", data, symbols + index * 16)
+        if macho_exported(kind):
+            end = data.index(b"\0", strings + name)
+            exports.add(data[strings + name : end].decode().removeprefix("_"))
     return exports
 
 
 def macho_exports(data: bytes) -> set[str]:
     """Return the defined external symbols of a thin 64-bit Mach-O file, as C names."""
     symbol_table = 0x2
-    exports = set()
-    for command, position, _ in macho_load_commands(data):
-        if command != symbol_table:
-            continue
-        symbols, count, strings, _ = struct.unpack_from("<IIII", data, position + 8)
-        for index in range(count):
-            name, kind = struct.unpack_from("<IB", data, symbols + index * 16)
-            # External, not private external, not a debug entry, defined in a section.
-            if kind & 0x01 and not kind & 0xF0 and kind & 0x0E == 0x0E:
-                end = data.index(b"\0", strings + name)
-                exports.add(data[strings + name : end].decode().removeprefix("_"))
-    return exports
+    return set().union(
+        *(
+            symbol_table_exports(data, position)
+            for command, position, _ in macho_load_commands(data)
+            if command == symbol_table
+        )
+    )
 
 
 def exports(path: Path) -> set[str]:

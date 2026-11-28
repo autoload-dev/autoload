@@ -138,6 +138,23 @@ def same_engine(manifest: Version, library: Version) -> bool:
     )
 
 
+def _require_manifests_engine(
+    library: str, held: set[str], expected: dict[str, Version]
+) -> None:
+    """Fail unless the library is the engine every manifest names, with its hash."""
+    for manifest, version in expected.items():
+        if not same_engine(version, parse(library)):
+            raise SystemExit(
+                f"The engine AAR's manifest names Godot {manifest}, "
+                f"but its library is Godot {library}"
+            )
+        if version.digest and version.digest not in held:
+            raise SystemExit(
+                f"The engine AAR's manifest names Godot {manifest}, "
+                f"but its library has no hash {version.digest}"
+            )
+
+
 def native_library_versions(path: Path, manifests: set[str]) -> set[str]:
     """
     Return the versions the engine libraries of an AAR's native libraries name.
@@ -155,17 +172,7 @@ def native_library_versions(path: Path, manifests: set[str]) -> set[str]:
                 library, held = _scan(source, hashes)
             if not library:
                 continue
-            for manifest, version in expected.items():
-                if not same_engine(version, parse(library)):
-                    raise SystemExit(
-                        f"The engine AAR's manifest names Godot {manifest}, "
-                        f"but its library is Godot {library}"
-                    )
-                if version.digest and version.digest not in held:
-                    raise SystemExit(
-                        f"The engine AAR's manifest names Godot {manifest}, "
-                        f"but its library has no hash {version.digest}"
-                    )
+            _require_manifests_engine(library, held, expected)
             found.add(library)
     return found
 
@@ -259,6 +266,9 @@ def require_rendering_method(
         )
 
 
+# ==== Command line ============================================================
+
+
 def _check_rendering_method(args: argparse.Namespace) -> None:
     """Check the project's rendering method where the engine declares its renderers."""
     if not args.facts or args.renderers is None:
@@ -272,7 +282,34 @@ def _check_rendering_method(args: argparse.Namespace) -> None:
     )
 
 
-# ==== Command line ============================================================
+def _check_android_abi(args: argparse.Namespace) -> None:
+    """Fail unless the engine AAR ships its engine library for the export's ABI."""
+    if not (args.android_abi and args.android_native_libs):
+        return
+    if not any(
+        args.android_abi in engine_abis(path) for path in args.android_native_libs
+    ):
+        raise SystemExit(
+            f"The engine AAR has no {_ENGINE_LIBRARY} for {args.android_abi}; "
+            "select an engine that supports the export platform's CPUs"
+        )
+
+
+def _check_ios_platform_slice(args: argparse.Namespace) -> None:
+    """Fail unless every iOS engine library has objects of the export's platform slice."""
+    if not args.ios_platform_slice:
+        return
+    cpu, sdk = args.ios_platform_slice.split(":")
+    # Check every library before failing. Only the findings of all libraries together
+    # show whether any export platform links.
+    problems = []
+    for path in args.ios_library:
+        try:
+            require_ios_platform_slice(path, cpu, sdk)
+        except SystemExit as problem:
+            problems.append(str(problem))
+    if problems:
+        raise SystemExit("\n".join(problems))
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -326,10 +363,8 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> None:
-    parser = _parser()
-    args = parser.parse_args()
-    _check_rendering_method(args)
+def _engine_versions(args: argparse.Namespace) -> set[str]:
+    """Return the versions the engine's manifests and libraries name, checking that they agree."""
     manifests = set()
     for path in args.android_manifest:
         manifests |= manifest_versions(path)
@@ -339,44 +374,40 @@ def main() -> None:
             found |= library_versions(path)
     for path in args.android_native_libs:
         found |= native_library_versions(path, manifests)
-    if (
-        args.android_abi
-        and args.android_native_libs
-        and not any(
-            args.android_abi in engine_abis(path) for path in args.android_native_libs
-        )
-    ):
-        raise SystemExit(
-            f"The engine AAR has no {_ENGINE_LIBRARY} for {args.android_abi}; "
-            "select an engine that supports the export platform's CPUs"
-        )
-    if args.ios_platform_slice:
-        cpu, sdk = args.ios_platform_slice.split(":")
-        # Report every library: together they show whether any export platform links.
-        problems = []
-        for path in args.ios_library:
-            try:
-                require_ios_platform_slice(path, cpu, sdk)
-            except SystemExit as problem:
-                problems.append(str(problem))
-        if problems:
-            raise SystemExit("\n".join(problems))
+    return found
+
+
+def _matches_assertion(expected: Version, actual: Version) -> bool:
+    """
+    Return whether an inspected engine is the declared one.
+
+    A manifest omits the prerelease number; where a name has one, it must match.
+    """
+    if not same_engine(expected, actual):
+        return False
+    return actual.status == expected.status or not any(c.isdigit() for c in actual.status)
+
+
+def _check_assertion(assertion: str, found: set[str]) -> None:
+    """Fail when an inspected engine contradicts the declared version of a prebuilt one."""
+    expected = parse(
+        assertion.replace("-", ".") if "-" in assertion else assertion + ".stable"
+    )
+    for name in sorted(found):
+        if not _matches_assertion(expected, parse(name)):
+            raise SystemExit(
+                f"engine_version assertion {assertion} contradicts inspected engine {name}"
+            )
+
+
+def main() -> None:
+    args = _parser().parse_args()
+    _check_rendering_method(args)
+    found = _engine_versions(args)
+    _check_android_abi(args)
+    _check_ios_platform_slice(args)
     if args.assert_version:
-        expected = parse(
-            args.assert_version.replace("-", ".")
-            if "-" in args.assert_version
-            else args.assert_version + ".stable"
-        )
-        for name in sorted(found):
-            actual = parse(name)
-            # A manifest omits the prerelease number; where a name has one, it must match.
-            if not same_engine(expected, actual) or (
-                any(c.isdigit() for c in actual.status)
-                and actual.status != expected.status
-            ):
-                raise SystemExit(
-                    f"engine_version assertion {args.assert_version} contradicts inspected engine {name}"
-                )
+        _check_assertion(args.assert_version, found)
     # The pack producer's version is never compared: editor and runtime are
     # selected independently and may differ in either direction.
     args.output.write_text(

@@ -21,6 +21,37 @@ def excluded_with_sidecars(excluded: Collection[str]) -> set[str]:
     }
 
 
+def _packed(paths: set[str], path: str) -> bool:
+    """Whether the PCK's paths hold a file as it is, remapped or imported."""
+    return any(candidate in paths for candidate in (path, path + REMAP, path + IMPORT))
+
+
+def _require_excluded(paths: set[str], excluded: set[str]) -> None:
+    leaked = sorted(
+        path for path in excluded_with_sidecars(excluded) if _packed(paths, path)
+    )
+    if leaked:
+        raise RuntimeError(
+            "Godot included excluded resources in the PCK: " + ", ".join(leaked)
+        )
+
+
+def _require_selected(
+    paths: set[str], selected: set[str], ignored: Collection[str]
+) -> None:
+    # Godot packs sidecars into its own UID and import tables, and converted
+    # resources under a remap.
+    missing = sorted(
+        path
+        for path in selected
+        if not is_sidecar_named(path) and path not in ignored and not _packed(paths, path)
+    )
+    if missing:
+        raise RuntimeError(
+            "Godot omitted declared resources from the PCK: " + ", ".join(missing)
+        )
+
+
 def inspect_export(
     contents: dict,
     selected: set[str],
@@ -34,27 +65,8 @@ def inspect_export(
     visible directory it may still pack, so none of them is required.
     """
     paths = {path.removeprefix("res://") for path in contents["paths"]}
-
-    def packed(path: str) -> bool:
-        return any(
-            candidate in paths for candidate in (path, path + REMAP, path + IMPORT)
-        )
-
-    leaked = sorted(path for path in excluded_with_sidecars(excluded) if packed(path))
-    if leaked:
-        raise RuntimeError(
-            "Godot included excluded resources in the PCK: " + ", ".join(leaked)
-        )
-    # Metadata becomes Godot-owned UID/import tables. Converted resources use remaps.
-    missing = sorted(
-        path
-        for path in selected
-        if not is_sidecar_named(path) and path not in ignored and not packed(path)
-    )
-    if missing:
-        raise RuntimeError(
-            "Godot omitted declared resources from the PCK: " + ", ".join(missing)
-        )
+    _require_excluded(paths, excluded)
+    _require_selected(paths, selected, ignored)
     return {
         "packed_paths": sorted(paths),
         "selected_paths": sorted(selected),

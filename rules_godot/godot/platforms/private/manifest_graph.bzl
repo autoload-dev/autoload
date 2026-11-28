@@ -18,18 +18,26 @@ ManifestGraphInfo = provider(
 
 _EDGES = ["deps", "exports", "runtime_deps"]
 
+def _reached_libraries(ctx):
+    """The libraries the target's dependencies are or reach, each once, in the order reached."""
+    reached = {}
+    for library in [
+        library
+        for edge in _EDGES
+        for dep in getattr(ctx.rule.attr, edge, [])
+        if ManifestGraphInfo in dep
+        for library in dep[ManifestGraphInfo].libraries
+    ]:
+        reached.setdefault(library.label, library)
+    return reached.values()
+
 def _manifest_graph_aspect_impl(target, ctx):
     # The Android runtime bridge forwards the graph of the runtime it resolves.
     if ManifestGraphInfo in target:
         return []
-    reached = {}
-    for edge in _EDGES:
-        for dep in getattr(ctx.rule.attr, edge, []):
-            if ManifestGraphInfo in dep:
-                for library in dep[ManifestGraphInfo].libraries:
-                    reached.setdefault(library.label, library)
+    reached = _reached_libraries(ctx)
     if StarlarkAndroidResourcesInfo not in target:
-        return [ManifestGraphInfo(libraries = reached.values())]
+        return [ManifestGraphInfo(libraries = reached)]
     return [ManifestGraphInfo(libraries = [struct(
         label = target.label,
         nodes = [
@@ -37,7 +45,7 @@ def _manifest_graph_aspect_impl(target, ctx):
             for node in target[StarlarkAndroidResourcesInfo].direct_resources_nodes.to_list()
             if node.label == target.label
         ],
-        dependencies = reached.values(),
+        dependencies = reached,
     )])]
 
 manifest_graph_aspect = aspect(
@@ -46,6 +54,16 @@ manifest_graph_aspect = aspect(
     required_providers = [JavaInfo],
     doc = "Record the dependency graph of the Android libraries a platform library reaches.",
 )
+
+def _rank_level(level, ranked, nodes):
+    """Rank the unranked libraries of this level. Return their dependencies, the next level."""
+    following = []
+    for library in level:
+        if library.label not in ranked:
+            ranked[library.label] = True
+            nodes.extend(library.nodes)
+            following.extend(library.dependencies)
+    return following
 
 def ranked_resources_nodes(libraries):
     """
@@ -73,11 +91,5 @@ def ranked_resources_nodes(libraries):
     for _ in range(10000):
         if not level:
             break
-        following = []
-        for library in level:
-            if library.label not in ranked:
-                ranked[library.label] = True
-                nodes.extend(library.nodes)
-                following.extend(library.dependencies)
-        level = following
+        level = _rank_level(level, ranked, nodes)
     return nodes

@@ -8,7 +8,6 @@ symbols by build ID. No device runs it.
 """
 
 import os
-import struct
 import subprocess
 import sys
 import tempfile
@@ -16,6 +15,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
+from godot.platforms.private.tests.dex import defined_classes
 from tools.platforms.native_symbols import elf_build_id, elf_sections
 
 APPLICATION_ID = "org.example.rulesgodot.source"
@@ -28,35 +28,6 @@ SHELL_CLASS = "org.godotengine.godot.Godot"
 
 def runfile(path: str) -> Path:
     return Path(os.environ["TEST_SRCDIR"], path)
-
-
-def defined_classes(dex: bytes) -> set[str]:
-    """Read defined class names from a standard little-endian DEX class_defs table."""
-    # https://source.android.com/docs/core/runtime/dex-format#header-item
-    if len(dex) < 112 or dex[:4] != b"dex\n" or dex[7] != 0:
-        raise ValueError("Invalid DEX header")
-    size, header_size, endian = struct.unpack_from("<III", dex, 32)
-    if size != len(dex) or header_size != 112 or endian != 0x12345678:
-        raise ValueError("Invalid DEX size, header or byte order")
-    string_count, strings = struct.unpack_from("<II", dex, 56)
-    type_count, types = struct.unpack_from("<II", dex, 64)
-    class_count, classes = struct.unpack_from("<II", dex, 96)
-    result = set()
-    for index in range(class_count):
-        type_index = struct.unpack_from("<I", dex, classes + index * 32)[0]
-        if type_index >= type_count:
-            raise ValueError("DEX class type outside type table")
-        string_index = struct.unpack_from("<I", dex, types + type_index * 4)[0]
-        if string_index >= string_count:
-            raise ValueError("DEX descriptor outside string table")
-        offset = struct.unpack_from("<I", dex, strings + string_index * 4)[0]
-        # Skip the ULEB128 UTF-16 length that precedes the MUTF-8 descriptor.
-        while dex[offset] & 0x80:
-            offset += 1
-        offset += 1
-        descriptor = dex[offset : dex.index(b"\0", offset)].decode("utf-8")
-        result.add(descriptor[1:-1].replace("/", "."))
-    return result
 
 
 class AndroidSourceBundleTest(unittest.TestCase):

@@ -40,18 +40,19 @@ _ReachedActionsInfo = provider(
     fields = {"actions": "depset of struct(owner, action, headers)"},
 )
 
+def _values(value):
+    if type(value) == "dict":
+        # Label-keyed dicts, such as an extension's libraries.
+        return list(value.keys()) + list(value.values())
+    return value if type(value) == "list" else [value]
+
 def _reached_actions_impl(target, ctx):
-    dependencies = []
-    for attribute in dir(ctx.rule.attr):
-        value = getattr(ctx.rule.attr, attribute)
-        if type(value) == "dict":
-            # Label-keyed dicts, such as an extension's libraries.
-            value = list(value.keys()) + list(value.values())
-        dependencies.extend([
-            dependency
-            for dependency in (value if type(value) == "list" else [value])
-            if type(dependency) == "Target"
-        ])
+    dependencies = [
+        dependency
+        for attribute in dir(ctx.rule.attr)
+        for dependency in _values(getattr(ctx.rule.attr, attribute))
+        if type(dependency) == "Target"
+    ]
 
     # The headers the target's compile actions may read: its own and its dependencies'.
     headers = depset(
@@ -135,6 +136,18 @@ def _is_editor(file, engine):
 def _reads_editor(action, engine):
     return any([_is_editor(file, engine) for file in action.inputs.to_list()])
 
+def _from_engine(file, produced):
+    """
+    Whether a Godot action's input is an editor file or the result of an action template.
+
+    Such a result is a generated directory that no reached action produces.
+    """
+    hidden_result = file.is_directory and not file.is_source and file.path not in produced
+    return hidden_result or any([_is_editor(file, engine) for engine in DEVELOPMENT_ENGINES])
+
+def _reads_any(action, paths):
+    return any([file.path in paths for file in action.inputs.to_list()])
+
 def _engine_derived(target):
     """
     Return the paths of the files that change with the engine.
@@ -145,21 +158,25 @@ def _engine_derived(target):
     entries = target[_ReachedActionsInfo].actions.to_list()
     godot = [entry.action for entry in entries if entry.action.mnemonic.startswith("Godot")]
     produced = {file.path: None for entry in entries for file in entry.action.outputs.to_list()}
-    derived = {}
-    for action in godot:
-        for file in action.inputs.to_list():
-            hidden_result = file.is_directory and not file.is_source and file.path not in produced
-            if hidden_result or any([_is_editor(file, engine) for engine in DEVELOPMENT_ENGINES]):
-                derived[file.path] = None
+    derived = {
+        file.path: None
+        for action in godot
+        for file in action.inputs.to_list()
+        if _from_engine(file, produced)
+    }
+
+    # Each round marks the outputs of the actions one more level downstream.
     for _ in range(len(godot)):
-        changed = False
-        for action in godot:
-            outputs = [file.path for file in action.outputs.to_list() if file.path not in derived]
-            if outputs and any([file.path in derived for file in action.inputs.to_list()]):
-                derived.update({path: None for path in outputs})
-                changed = True
-        if not changed:
+        newly = {
+            file.path: None
+            for action in godot
+            if _reads_any(action, derived)
+            for file in action.outputs.to_list()
+            if file.path not in derived
+        }
+        if not newly:
             break
+        derived.update(newly)
     return derived
 
 def _expect_unchanged(env, targets, mnemonics):
@@ -210,25 +227,53 @@ def _test_engine_upgrade_reruns_editor_actions(name):
         extra_target_under_test_aspects = [_reached_actions],
     )
 
+def _expect_entries(env, engine, target, mnemonic):
+    entries = _entries(target, [mnemonic])
+    env.expect.where(configuration = engine, mnemonic = mnemonic).that_int(len(entries)).is_greater_than(0)
+    return entries
+
+def _expect_reads_the_selected_editor(env, engine, entry):
+    """Assert that the action reads the selected engine's editor, and not the other one's."""
+    for editor in DEVELOPMENT_ENGINES:
+        env.expect.where(configuration = engine, mnemonic = entry.action.mnemonic, owner = entry.owner, editor = editor).that_bool(
+            _reads_editor(entry.action, editor),
+        ).equals(editor == engine)
+
+def _expect_reads_derived(env, engine, target, derived):
+    """Assert that each action that reads the editor's results reads a file that changes with the engine."""
+    for mnemonic in _READS_EDITOR_RESULTS:
+        for entry in _expect_entries(env, engine, target, mnemonic):
+            env.expect.where(configuration = engine, mnemonic = mnemonic, owner = entry.owner).that_bool(
+                _reads_any(entry.action, derived),
+            ).equals(True)
+
 def _engine_upgrade_reruns_editor_actions(env, targets):
     for engine in DEVELOPMENT_ENGINES:
         target = getattr(targets, engine)
-        derived = _engine_derived(target)
-        for mnemonic in _RUNS_EDITOR + _READS_EDITOR_RESULTS:
-            entries = _entries(target, [mnemonic])
-            env.expect.where(configuration = engine, mnemonic = mnemonic).that_int(len(entries)).is_greater_than(0)
-            for entry in entries:
-                if mnemonic in _READS_EDITOR_RESULTS:
-                    env.expect.where(configuration = engine, mnemonic = mnemonic, owner = entry.owner).that_bool(
-                        any([file.path in derived for file in entry.action.inputs.to_list()]),
-                    ).equals(True)
-                    continue
+        for mnemonic in _RUNS_EDITOR:
+            for entry in _expect_entries(env, engine, target, mnemonic):
+                _expect_reads_the_selected_editor(env, engine, entry)
+        _expect_reads_derived(env, engine, target, _engine_derived(target))
 
-                # The selected engine's editor, and not the other one's.
-                for editor in DEVELOPMENT_ENGINES:
-                    env.expect.where(configuration = engine, mnemonic = mnemonic, owner = entry.owner, editor = editor).that_bool(
-                        _reads_editor(entry.action, editor),
-                    ).equals(editor == engine)
+def _test_engine_upgrade_reruns_the_import_project_file(name):
+    analysis_test(
+        name = name,
+        targets = _arrange(name),
+        impl = _engine_upgrade_reruns_the_import_project_file,
+        config_settings = GODOT_EXPORT,
+        extra_target_under_test_aspects = [_reached_actions],
+    )
+
+# The import purpose's project.godot reads the feature list the editor writes. It reruns
+# when the editor changes, although the editor is not among its inputs.
+def _engine_upgrade_reruns_the_import_project_file(env, targets):
+    for engine in DEVELOPMENT_ENGINES:
+        target = getattr(targets, engine)
+        derived = _engine_derived(target)
+        for entry in _expect_entries(env, engine, target, "GodotImportConfig"):
+            env.expect.where(configuration = engine, owner = entry.owner).that_bool(
+                _reads_any(entry.action, derived),
+            ).equals(True)
 
 def engine_upgrade_test_suite(name):
     test_suite(
@@ -237,5 +282,6 @@ def engine_upgrade_test_suite(name):
             _test_engine_upgrade_leaves_native_actions_unchanged,
             _test_engine_upgrade_leaves_export_project_file_unchanged,
             _test_engine_upgrade_reruns_editor_actions,
+            _test_engine_upgrade_reruns_the_import_project_file,
         ],
     )

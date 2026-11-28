@@ -38,6 +38,43 @@ _EDGES = [
     "srcs",
 ]
 
+def _static_archives(target):
+    return [
+        library.static_library or library.pic_static_library
+        for linker in target[CcInfo].linking_context.linker_inputs.to_list()
+        for library in linker.libraries
+        if library.static_library or library.pic_static_library
+    ]
+
+def _engine_files(target, ctx):
+    """Return the engine's archives, AAR or library, when the target is one of them."""
+    files = []
+    if CcInfo in target and target.label.name in ["engine_library", "release", "ios_release"]:
+        files += _static_archives(target)
+    if ctx.rule.kind == "godot_android_engine_aar" or target.label.name in ["godot", "libgodot_android.so"]:
+        files += target[DefaultInfo].files.to_list()
+    return files
+
+def _targets(value):
+    if type(value) == "dict":
+        return value.keys()
+    if type(value) == "list":
+        return value
+    return [value]
+
+def _dependency_inputs(ctx):
+    """Return the beta inputs the aspect collected on the target's _EDGES and its runtime."""
+    transitive = [
+        dependency[_BetaInputsInfo].files
+        for name in _EDGES
+        for dependency in _targets(getattr(ctx.rule.attr, name, None))
+        if type(dependency) == "Target" and _BetaInputsInfo in dependency
+    ]
+    runtime = ctx.rule.toolchains[_RUNTIME] if _RUNTIME in ctx.rule.toolchains else None
+    if runtime and _BetaInputsInfo in runtime:
+        transitive.append(runtime[_BetaInputsInfo].files)
+    return transitive
+
 def _inputs_impl(target, ctx):
     # Follow the actual Apple/Android transitions rather than resolving a second engine or
     # pack configuration. These identities are private target names of the engine
@@ -48,36 +85,10 @@ def _inputs_impl(target, ctx):
         files.append(target[GodotPackInfo].pack_file)
     if OutputGroupInfo in target and hasattr(target[OutputGroupInfo], "plist"):
         files += target[OutputGroupInfo].plist.to_list()
-    if ctx.rule:
-        if CcInfo in target and target.label.name in ["engine_library", "release", "ios_release"]:
-            for linker in target[CcInfo].linking_context.linker_inputs.to_list():
-                for library in linker.libraries:
-                    archive = library.static_library or library.pic_static_library
-                    if archive:
-                        files.append(archive)
-        if ctx.rule.kind == "godot_android_engine_aar":
-            files += target[DefaultInfo].files.to_list()
-        if target.label.name in ["godot", "libgodot_android.so"]:
-            files += target[DefaultInfo].files.to_list()
     transitive = []
-    for name in _EDGES:
-        if ctx.rule and hasattr(ctx.rule.attr, name):
-            value = getattr(ctx.rule.attr, name)
-            if type(value) == "dict":
-                values = value.keys()
-            elif type(value) == "list":
-                values = value
-            else:
-                values = [value]
-            transitive += [
-                dep[_BetaInputsInfo].files
-                for dep in values
-                if type(dep) == "Target" and _BetaInputsInfo in dep
-            ]
-    if ctx.rule and _RUNTIME in ctx.rule.toolchains:
-        runtime = ctx.rule.toolchains[_RUNTIME]
-        if runtime and _BetaInputsInfo in runtime:
-            transitive.append(runtime[_BetaInputsInfo].files)
+    if ctx.rule:
+        files += _engine_files(target, ctx)
+        transitive = _dependency_inputs(ctx)
     return [_BetaInputsInfo(files = depset(files, transitive = transitive))]
 
 _inputs = aspect(
@@ -115,58 +126,75 @@ def _one(files, suffix):
         fail("Expected one %s, got %s" % (suffix, [f.path for f in matches]))
     return matches[0]
 
+def _android_inputs(ctx, outputs, inputs):
+    """Return the Android inspector's file arguments, with the other files and runfiles it needs."""
+    apks = [
+        file
+        for file in outputs
+        if file.extension == "apk" and not file.basename.endswith("_unsigned.apk")
+    ]
+    if len(apks) != 1:
+        fail("Expected one signed APK, got %s" % [f.path for f in apks])
+    aar = ctx.file.official_aar if ctx.attr.kind == "official" else _one(inputs, ".aar")
+    pairs = [("--artifact", apks[0]), ("--engine-aar", aar)]
+    if ctx.attr.kind == "source":
+        pairs.append(("--source-library", _one(inputs, "/libgodot_android.so")))
+    toolchain = ctx.attr.cc_toolchain_files[DefaultInfo].files.to_list()
+    pairs.append(("--readelf", _one(toolchain, "/bin/llvm-readelf")))
+    runfiles = ctx.runfiles()
+    for flag, tool in [("--aapt", ctx.attr.aapt), ("--apksigner", ctx.attr.apksigner)]:
+        pairs.append((flag, tool[DefaultInfo].files_to_run.executable))
+        runfiles = runfiles.merge(tool[DefaultInfo].default_runfiles)
+    return struct(
+        arguments = [],
+        pairs = pairs,
+        # Keep the NDK host tools' adjacent runtime libraries available too.
+        files = [f for f in toolchain if f.extension in ["dylib", "so"]],
+        runfiles = runfiles,
+    )
+
+def _compile_archives(inputs):
+    libraries = [
+        f
+        for f in inputs
+        if f.basename.startswith("lib_objects_") and not ".pic." in f.basename
+    ]
+    if not libraries:
+        fail("No source-built engine compile archives found in the application graph")
+    return libraries
+
+def _ios_inputs(ctx, outputs, inputs):
+    """Return the iOS inspector's arguments: the official device link's files or the source-built app."""
+    if ctx.attr.kind == "official":
+        environment = "device"
+        pairs = [
+            ("--binary", _one(outputs, "_lipobin")),
+            ("--pack", _one(inputs, ".pck")),
+            ("--plist", _one(inputs, "/Godot.plist")),
+            ("--accesskit-library", _one(inputs, "/libaccesskit.a")),
+        ]
+        libraries = [_one(inputs, "/libgodot.a")]
+    else:
+        environment = "simulator"
+        pairs = [("--artifact", _one(outputs, ".app"))]
+        libraries = _compile_archives(inputs)
+    return struct(
+        arguments = ["--expected-environment " + environment],
+        pairs = pairs + [("--engine-library", file) for file in libraries],
+        files = [],
+        runfiles = ctx.runfiles(),
+    )
+
 def _test_impl(ctx):
     app = ctx.attr.app
     outputs = app[DefaultInfo].files.to_list()
     inputs = app[_BetaInputsInfo].files.to_list()
-    files = []
-    arguments = ["--kind " + ctx.attr.kind]
-    runfiles = ctx.runfiles()
-
-    if ctx.attr.operating_system == "android":
-        apks = [
-            file
-            for file in outputs
-            if file.extension == "apk" and not file.basename.endswith("_unsigned.apk")
-        ]
-        if len(apks) != 1:
-            fail("Expected one signed APK, got %s" % [f.path for f in apks])
-        aar = ctx.file.official_aar if ctx.attr.kind == "official" else _one(inputs, ".aar")
-        pairs = [("--artifact", apks[0]), ("--engine-aar", aar)]
-        if ctx.attr.kind == "source":
-            pairs.append(("--source-library", _one(inputs, "/libgodot_android.so")))
-        toolchain = ctx.attr.cc_toolchain_files[DefaultInfo].files.to_list()
-        pairs.append(("--readelf", _one(toolchain, "/bin/llvm-readelf")))
-
-        # Keep the NDK host tools' adjacent runtime libraries available too.
-        files += [f for f in toolchain if f.extension in ["dylib", "so"]]
-        for flag, tool in [("--aapt", ctx.attr.aapt), ("--apksigner", ctx.attr.apksigner)]:
-            pairs.append((flag, tool[DefaultInfo].files_to_run.executable))
-            runfiles = runfiles.merge(tool[DefaultInfo].default_runfiles)
-    else:
-        environment = "device" if ctx.attr.kind == "official" else "simulator"
-        arguments.append("--expected-environment " + environment)
-        if ctx.attr.kind == "official":
-            pairs = [
-                ("--binary", _one(outputs, "_lipobin")),
-                ("--pack", _one(inputs, ".pck")),
-                ("--plist", _one(inputs, "/Godot.plist")),
-                ("--accesskit-library", _one(inputs, "/libaccesskit.a")),
-            ]
-            libraries = [_one(inputs, "/libgodot.a")]
-        else:
-            pairs = [("--artifact", _one(outputs, ".app"))]
-            libraries = [
-                f
-                for f in inputs
-                if f.basename.startswith("lib_objects_") and not ".pic." in f.basename
-            ]
-            if not libraries:
-                fail("No source-built engine compile archives found in the application graph")
-        pairs += [("--engine-library", file) for file in libraries]
+    selected = (_android_inputs if ctx.attr.operating_system == "android" else _ios_inputs)(ctx, outputs, inputs)
+    pairs = list(selected.pairs)
     if ctx.file.engine_manifest:
         pairs.append(("--engine-manifest", ctx.file.engine_manifest))
-    files += [file for _, file in pairs]
+    files = selected.files + [file for _, file in pairs]
+    arguments = ["--kind " + ctx.attr.kind] + selected.arguments
     arguments += ['%s "$runfiles/%s"' % (flag, _runfile(ctx, file)) for flag, file in pairs]
     inspector = ctx.attr.inspector[DefaultInfo]
     launcher = ctx.actions.declare_file(ctx.label.name)
@@ -181,7 +209,7 @@ def _test_impl(ctx):
     )
     return [DefaultInfo(
         executable = launcher,
-        runfiles = runfiles.merge(ctx.runfiles(files = files)).merge(inspector.default_runfiles),
+        runfiles = selected.runfiles.merge(ctx.runfiles(files = files)).merge(inspector.default_runfiles),
     )]
 
 beta_engine_test = rule(

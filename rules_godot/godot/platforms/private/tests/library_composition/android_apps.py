@@ -2,11 +2,11 @@
 
 import argparse
 import os
-import struct
 import subprocess
 import zipfile
 from pathlib import Path
 
+from godot.platforms.private.tests.dex import defined_classes
 from tools.platforms.native_symbols import elf_build_id, elf_sections
 
 
@@ -74,34 +74,12 @@ def universal_apk(args: argparse.Namespace, bundle: Path, work: Path) -> tuple[s
     return manifest, work / "universal.apk"
 
 
-def _defined_classes(dex: bytes) -> set[str]:
-    """Read defined class names from a little-endian DEX file's class_defs table."""
-    # https://source.android.com/docs/core/runtime/dex-format#header-item
-    if len(dex) < 112 or dex[:4] != b"dex\n":
-        raise ValueError("Invalid DEX header")
-    strings = struct.unpack_from("<I", dex, 60)[0]
-    types = struct.unpack_from("<I", dex, 68)[0]
-    class_count, classes = struct.unpack_from("<II", dex, 96)
-    result = set()
-    for index in range(class_count):
-        type_index = struct.unpack_from("<I", dex, classes + index * 32)[0]
-        string_index = struct.unpack_from("<I", dex, types + type_index * 4)[0]
-        offset = struct.unpack_from("<I", dex, strings + string_index * 4)[0]
-        # Skip the ULEB128 length of the MUTF-8 descriptor.
-        while dex[offset] & 0x80:
-            offset += 1
-        offset += 1
-        descriptor = dex[offset : dex.index(b"\0", offset)].decode("utf-8")
-        result.add(descriptor[1:-1].replace("/", "."))
-    return result
-
-
 def apk_classes(apk_file: zipfile.ZipFile) -> set[str]:
     """Return the classes that the APK's DEX files define."""
     definitions = set()
     for name in apk_file.namelist():
         if name.startswith("classes") and name.endswith(".dex"):
-            definitions |= _defined_classes(apk_file.read(name))
+            definitions |= defined_classes(apk_file.read(name))
     return definitions
 
 

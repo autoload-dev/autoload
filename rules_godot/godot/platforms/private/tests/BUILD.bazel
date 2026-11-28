@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_binary")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 load(":android_plugin_api_tests.bzl", "android_plugin_api_test_suite")
 load(":android_runtime_tests.bzl", "android_runtime_test_suite")
 load(":android_toolchains_tests.bzl", "android_toolchains_test_suite")
@@ -65,4 +65,18 @@ py_binary(
     srcs = ["make_aar.py"],
     tags = ["manual"],
     visibility = [":__subpackages__"],
+)
+
+# The DEX reader of the tests that inspect an Android application's classes.
+py_library(
+    name = "dex",
+    srcs = ["dex.py"],
+    visibility = [":__subpackages__"],
+)
+
+py_test(
+    name = "dex_test",
+    size = "small",
+    srcs = ["dex_test.py"],
+    deps = [":dex"],
 )
