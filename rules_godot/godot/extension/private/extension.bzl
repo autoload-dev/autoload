@@ -5,7 +5,16 @@ declares both.
 """
 
 load("@rules_apple//apple:aspects.bzl", "framework_provider_aspect")
-load("@rules_apple//apple:providers.bzl", "AppleFrameworkImportInfo", "apple_provider")
+load("@rules_apple//apple:providers.bzl", "AppleFrameworkBundleInfo", "AppleFrameworkImportInfo", "AppleResourceInfo", "apple_provider")
+
+# rules_apple's resource aspect and its provider merge have no public export. The extension
+# replays the aspect below its library, which the aspect does not follow by itself; the iOS
+# application regressions pin the contract.
+# buildifier: disable=bzl-visibility
+load("@rules_apple//apple/internal:resources.bzl", "resources")
+
+# buildifier: disable=bzl-visibility
+load("@rules_apple//apple/internal/aspects:resource_aspect.bzl", "apple_resource_aspect")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load("//godot/platforms/private:manifest_graph.bzl", "manifest_graph_aspect")
@@ -116,17 +125,28 @@ def _library_providers(ctx, target, library, linked_frameworks):
     # provider, so it carries the frameworks of the platform libraries too, and those the
     # library links, which the application embeds once however many extensions link them.
     if library.link_kind == "framework":
-        sources = (
-            [target] +
-            getattr(ctx.attr, "deps", []) +
-            getattr(ctx.attr, "implementation_deps", [])
-        )
+        sources = [target] + getattr(ctx.attr, "deps", [])
         providers.append(apple_provider.merge_apple_framework_import_info([
             target[AppleFrameworkImportInfo]
             for target in sources
             if AppleFrameworkImportInfo in target
         ] + linked_frameworks))
     return providers
+
+def _apple_resources(ctx):
+    """
+    The Apple resources of the library's code and of the platform libraries, as one provider.
+
+    rules_apple's resource aspect follows neither library nor the extension library's code
+    on its own, and stops at a target that provides AppleResourceInfo, so the extension
+    hands on what the aspect found below both attributes.
+    """
+    infos = [
+        target[AppleResourceInfo]
+        for target in ctx.attr.library + ctx.attr.deps
+        if AppleResourceInfo in target and AppleFrameworkBundleInfo not in target
+    ]
+    return [resources.merge_providers(providers = infos)] if infos else []
 
 def _extension_impl(ctx):
     require_supported_godot_minimum(ctx.attr.compatibility_minimum)
@@ -175,10 +195,12 @@ def _extension_impl(ctx):
     if tool_view:
         # Used by itself, the extension is an add-on of only that extension.
         providers.append(extension_addon(ctx.label, extension))
+        providers += _apple_resources(ctx)
     return providers + _library_providers(ctx, target, library, linked_frameworks)
 
-_OWN_ATTRS = {
-    "library": attr.label(
+def _library_attr(aspects = []):
+    """The library attribute, with the aspects that follow it from the extension."""
+    return attr.label(
         doc = """
         The extension library of each configuration, varied with select() over platform
         constraints and @autoload_rules_godot//godot:debug, :release, :editor and :tool: a linked
@@ -196,7 +218,11 @@ _OWN_ATTRS = {
         """,
         allow_files = True,
         cfg = keep_debug_info,
-    ),
+        aspects = aspects,
+    )
+
+_OWN_ATTRS = {
+    "library": _library_attr(),
     "data": attr.label_list(
         doc = """
         Files the descriptor's [dependencies] lists beyond what the library's providers
@@ -260,6 +286,9 @@ _tool_view = rule(
 )
 
 _EXTENSION_ATTRS = _OWN_ATTRS | {
+    # rules_apple's resource aspect collects the Apple resources of the library's code,
+    # which applications bundle through the extension.
+    "library": _library_attr(aspects = [apple_resource_aspect]),
     "infoplists": attr.label_list(
         doc = """
         Info.plist fragments iOS applications merge into their Info.plist for the
@@ -279,7 +308,7 @@ _EXTENSION_ATTRS = _OWN_ATTRS | {
         """,
         # The frameworks of Objective-C and Swift libraries, for an extension that
         # provides AppleFrameworkImportInfo.
-        aspects = [framework_provider_aspect, manifest_graph_aspect],
+        aspects = [framework_provider_aspect, manifest_graph_aspect, apple_resource_aspect],
         providers = [[JavaInfo], [CcInfo]],
     ),
     "tool_view": attr.label(
@@ -312,27 +341,8 @@ _extension = rule(
     cfg = reset_transition,
 )
 
-# rules_apple's resource aspect follows implementation_deps and collects the resources it
-# finds there; the extension itself reads only the frameworks the library links from it.
-source_extension = rule(
-    doc = "A godot_extension whose library godot_cc_extension builds.",
-    implementation = _extension_impl,
-    attrs = _EXTENSION_ATTRS | {
-        "implementation_deps": attr.label_list(
-            doc = """
-            The extension's cc_library on iOS, so that iOS applications bundle the Apple
-            resources of its native dependencies, such as a Swift package's resource
-            bundle, and embed the dynamic frameworks it links, transitive ones included.
-            The godot_cc_extension macro sets it; it adds nothing to linking.
-            """,
-            # The frameworks the extension's framework links, as deps collects them.
-            aspects = [framework_provider_aspect],
-            cfg = keep_debug_info,
-        ),
-    },
-    exec_groups = _EXEC_GROUPS,
-    cfg = reset_transition,
-)
+# The extension rule, for godot_cc_extension, which declares its tool view itself.
+extension_rule = _extension
 
 _VIEW_ATTRS = ["library", "data", "resource_path", "entry_symbol", "compatibility_minimum", "reloadable", "testonly"]
 

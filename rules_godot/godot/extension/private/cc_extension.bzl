@@ -4,7 +4,7 @@ cc_library of the extension's code, its godot_extension_library and its godot_ex
 """
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
-load(":extension.bzl", "source_extension", "tool_view_of")
+load(":extension.bzl", "extension_rule", "tool_view_of")
 load(":extension_library.bzl", "godot_extension_library", "private_target_attrs", "rule_attrs")
 
 visibility(["//godot/extension"])
@@ -56,13 +56,9 @@ def _cc_extension_impl(
         linkstatic = linkstatic,
         **(generated | rule_attrs(kwargs))
     )
-    source_extension(
+    extension_rule(
         name = name,
         minimum_os_versions = minimum_os_versions,
-        implementation_deps = select({
-            Label("@platforms//os:ios"): [":" + code],
-            "//conditions:default": [],
-        }),
         deps = platform_deps,
         infoplists = infoplists,
         visibility = visibility,

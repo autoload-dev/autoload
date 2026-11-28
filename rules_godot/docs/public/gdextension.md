@@ -133,9 +133,9 @@ godot_extension(
 A library linked by another rule, such as `cc_binary(linkshared = True)`, stays accepted
 beside `godot_extension_library`, as the [libraries per
 configuration](#libraries-per-configuration) list them; the extension then names its entry
-symbol too. On iOS, `godot_cc_extension` also hands its code to the extension, so that
-applications bundle the Apple resources of its dependencies, such as a Swift package's
-resource bundle; an extension declared from the primitives does not.
+symbol too. On iOS, applications bundle the Apple resources of the code that a
+`godot_extension_library` links, such as a Swift package's resource bundle, whether
+`godot_cc_extension` declared the extension or the primitives did.
 
 ## C++ bindings
 
@@ -525,8 +525,8 @@ including a source-less `objc_library` for resources without code. Neither exten
 accepts raw resource files in `platform_deps`. Applications need not repeat
 extension-owned libraries or resources in their own composition fields.
 
-On iOS, a library that `godot_cc_extension` links statically through its C++ `deps` brings its
-Apple resources as well: iOS applications bundle them as they bundle those of
+On iOS, a library that `godot_cc_extension` or `godot_extension_library` links statically
+through its C++ `deps` brings its Apple resources as well: iOS applications bundle them as they bundle those of
 `platform_deps`. A Swift package target's resource bundle with its privacy manifest therefore
 arrives with the package in `deps`; listing the package in `platform_deps` as well would link
 it twice.

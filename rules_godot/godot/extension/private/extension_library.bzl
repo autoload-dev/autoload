@@ -147,7 +147,7 @@ def _extension_library_rule_impl(ctx):
         GodotExtensionLibraryInfo(
             entry_symbol = ctx.attr.entry_symbol,
             library = library,
-            frameworks = [code[AppleFrameworkImportInfo] for code in ctx.attr.code if AppleFrameworkImportInfo in code],
+            frameworks = [code[AppleFrameworkImportInfo] for code in ctx.attr.implementation_deps if AppleFrameworkImportInfo in code],
         ),
     ]
 
@@ -157,8 +157,14 @@ _extension_library = rule(
     attrs = {
         "library": attr.label(doc = "The linked library of this configuration.", mandatory = True),
         "entry_symbol": attr.string(doc = "The library's GDExtension entry symbol.", mandatory = True),
-        "code": attr.label_list(
-            doc = "The library's archive on iOS, whose linked frameworks applications embed.",
+        # The name rules_apple's resource aspect follows, from the extension's library down to
+        # the code's dependencies.
+        "implementation_deps": attr.label_list(
+            doc = """
+            The library's archive on iOS, whose linked frameworks applications embed and
+            whose dependencies' Apple resources they bundle, such as a Swift package's
+            resource bundle.
+            """,
             # rules_apple's framework aspect stops at the extension, which hands these on.
             aspects = [framework_provider_aspect],
         ),
@@ -217,7 +223,7 @@ def _godot_extension_library_impl(
             Label("@platforms//os:ios"): ":" + ios_library,
             "//conditions:default": ":" + shared,
         }),
-        code = select({
+        implementation_deps = select({
             Label("@platforms//os:ios"): [":" + archive],
             "//conditions:default": [],
         }),
