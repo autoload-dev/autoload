@@ -2,7 +2,6 @@
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("//godot/engine/private:source_repositories.bzl", "engine_build_impl", "profile_options")
-load("//godot/private/tests:copyright_excerpt.bzl", "COPYRIGHT_EXCERPT")
 load("//godot/private/tests:mocks.bzl", "mocks")
 
 visibility("private")
@@ -28,6 +27,7 @@ _CONFIGURE_ENVIRONMENT = [
 _ATTRS = {
     "name": "godot_linux_x86_64_template_release",
     "tree": _TREE,
+    "bundled_packages": "@@godot_bundled_packages_e95499637//:bundled_packages",
     "patches": [],
     "patch_strip": 1,
     "platform": "linux",
@@ -89,14 +89,13 @@ def _tree_json():
         "digest": "0" * 64,
     })
 
-# Godot's license text and COPYRIGHT.txt in the engine tree, beside its descriptor.
+# Godot's license text in the engine tree, beside its descriptor.
 _LICENSE = mocks.path(_TREE).dirname + "/LICENSE.txt"
-_COPYRIGHT = mocks.path(_TREE).dirname + "/COPYRIGHT.txt"
 
 def _paths(path):
     """Bazel's paths: a struct for the tree descriptor, whose directory the recipe links."""
     mapping = path or str
-    return lambda value: mocks.path(value) if str(value) in (str(_TREE), _LICENSE, _COPYRIGHT) else mapping(value)
+    return lambda value: mocks.path(value) if str(value) in (str(_TREE), _LICENSE) else mapping(value)
 
 def _build(*, execute = {}, path = None, environ = {}, files = {}, tree = None, **overrides):
     ctx = mocks.repository_ctx(
@@ -104,7 +103,6 @@ def _build(*, execute = {}, path = None, environ = {}, files = {}, tree = None, 
         files = {
             str(_TREE): tree or _tree_json(),
             _LICENSE: "Copyright (c) Godot Engine contributors.",
-            _COPYRIGHT: COPYRIGHT_EXCERPT,
         } | files,
         execute = execute,
         path = _paths(path),
@@ -181,9 +179,11 @@ def _test_configure_command_carries_the_recipe(env):
             "execute",
             "execute",
             "delete",
-            # REPO.bazel, the license text, the four bundled libraries' texts and the
-            # metadata's BUILD file, then WORKSPACE.bazel.
-        ] + ["file"] * 8,
+            "file",
+            "file",
+            "file",
+            "file",
+        ],
     ).in_order()
     env.expect.that_str(mocks.calls(ctx, "delete")[0].path).equals(".scons_env.json")
 
@@ -214,12 +214,17 @@ def _test_configure_command_carries_the_recipe(env):
         "REPO.bazel",
         "_package_metadata/LICENSE",
         "_package_metadata/BUILD.bazel",
-        # The libraries the tree's COPYRIGHT.txt lists, each a package of its own.
-        "_package_metadata/bullet_continuous_collision_detection_and_physics_library.txt",
-        "_package_metadata/servers_audio_effects_audio_effect_pitch_shift_cpp.txt",
-        "_package_metadata/smol_v.txt",
-        "_package_metadata/zlib.txt",
     ])
+
+# The recipe's engine carries the libraries of the tree's COPYRIGHT.txt, which their own
+# repository declares.
+def _test_a_recipe_names_its_trees_bundled_packages(env):
+    ctx, errors = _build()
+    env.expect.that_collection(errors).contains_exactly([])
+    build = [call.content for call in mocks.calls(ctx, "file") if call.path == "_package_metadata/BUILD.bazel"]
+    env.expect.that_str(build[0]).contains(
+        'srcs = ["@@godot_bundled_packages_e95499637//:bundled_packages"],',
+    )
 
 # A recipe holds its generated files and links the engine tree's sources hard: no recipe
 # extracts them again.
@@ -527,6 +532,7 @@ def engine_build_test_suite(name):
             _test_a_fixed_timeout_bounds_configure,
             _test_failed_configure_fails,
             _test_a_recipe_links_its_engine_tree,
+            _test_a_recipe_names_its_trees_bundled_packages,
             _test_a_failed_link_fails,
             _test_a_lock_file_renders_without_configuring_on_this_host,
             _test_pins_configure_where_godot_accepts_the_recipe,

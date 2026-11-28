@@ -213,6 +213,7 @@ bzl_library(
     srcs = ["extensions.bzl"],
     deps = [
         "//godot/engine/private:archives",
+        "//godot/engine/private:bundled_packages",
         "//godot/engine/private:extension_plan",
         "//godot/engine/private:hub",
         "//godot/engine/private:repositories",

@@ -1,13 +1,17 @@
 """
-The engine targets of an official engine carry the package metadata of Godot's bundled libraries.
+The libraries a Godot COPYRIGHT.txt lists, which godot_bundled_packages declares once and
+the engine targets carry.
 
-Each library of the COPYRIGHT.txt the catalogue pins is a target of its own that carries its
-package metadata, which the engine's targets depend on, so SBOM tools reach it beside
-Godot's metadata.
+Each library is a target of its own that carries its package metadata. The engine's
+targets depend on the repository's :bundled_packages, so SBOM tools reach every library
+beside Godot's metadata.
 """
 
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
+load("//godot/engine/private:bundled_packages.bzl", "bundled_packages_impl")
+load("//godot/private/tests:copyright_excerpt.bzl", "COPYRIGHT_EXCERPT")
+load("//godot/private/tests:mocks.bzl", "mocks")
 
 visibility("private")
 
@@ -15,6 +19,45 @@ _PackageMetadataLabelsInfo = provider(
     doc = "The labels of the package metadata a target and its bundled packages carry.",
     fields = {"labels": "A depset of label strings."},
 )
+
+_TREE = Label("//godot/engine/private/tests:tree.json")
+
+def _repository(files = {}, **attr):
+    ctx = mocks.repository_ctx(
+        attr = {"name": "godot_bundled_packages", "copyright": None, "tree": None} | attr,
+        files = files,
+        tree = [],
+    )
+    errors, fail_ = mocks.errors()
+    bundled_packages_impl(ctx, _fail = fail_)
+    return ctx, errors
+
+def _written(ctx):
+    return sorted([call.path for call in mocks.calls(ctx, "file")])
+
+# The repository of an engine tree reads the COPYRIGHT.txt beside the tree's descriptor.
+def _test_a_trees_libraries_come_from_its_copyright(env):
+    copyright = mocks.path(_TREE).dirname + "/COPYRIGHT.txt"
+    ctx, errors = _repository(files = {copyright: COPYRIGHT_EXCERPT}, tree = _TREE)
+    env.expect.that_collection(errors).contains_exactly([])
+    env.expect.that_collection(_written(ctx)).contains_at_least(["BUILD.bazel", "zlib.txt"])
+
+# The repository of a catalogued release reads the file the catalogue pins.
+def _test_a_releases_libraries_come_from_the_pinned_file(env):
+    ctx, errors = _repository(
+        files = {"@@godot_copyright//file:COPYRIGHT.txt": COPYRIGHT_EXCERPT},
+        copyright = "@@godot_copyright//file:COPYRIGHT.txt",
+    )
+    env.expect.that_collection(errors).contains_exactly([])
+    env.expect.that_collection(_written(ctx)).contains_at_least(["BUILD.bazel", "zlib.txt"])
+
+def _test_exactly_one_source_is_required(env):
+    for attr in [{}, {"copyright": "@@godot_copyright//file:COPYRIGHT.txt", "tree": _TREE}]:
+        ctx, errors = _repository(**attr)
+        env.expect.where(attr = attr).that_collection(errors).contains_exactly([
+            "godot_bundled_packages: set exactly one of copyright and tree",
+        ])
+        env.expect.where(attr = attr).that_collection(_written(ctx)).contains_exactly([])
 
 def _package_metadata_labels_impl(_target, ctx):
     own = [str(metadata.label) for metadata in getattr(ctx.rule.attr, "package_metadata", [])]
@@ -46,16 +89,14 @@ def _test_the_editor_carries_the_bundled_libraries(name):
 
 def _the_editor_carries_the_bundled_libraries(env, target):
     labels = target[_PackageMetadataLabelsInfo].labels.to_list()
-    repository = target.label.repo_name
-    env.expect.that_collection(labels).contains_at_least([
-        "@@%s//_package_metadata:%s" % (repository, name)
-        for name in [
-            # Godot's own, then libraries of thirdparty/ and of Godot's modules.
-            "package_metadata",
-            "zlib.metadata",
-            "the_freetype_project.metadata",
-            "bullet_continuous_collision_detection_and_physics_library.metadata",
-        ]
+    env.expect.that_collection(labels).contains("@@%s//_package_metadata:package_metadata" % target.label.repo_name)
+
+    # The libraries, of thirdparty/ and of Godot's modules, are the release's repository's.
+    names = [label.rpartition(":")[2] for label in labels if "_bundled_packages//:" in label]
+    env.expect.that_collection(names).contains_at_least([
+        "zlib.metadata",
+        "the_freetype_project.metadata",
+        "bullet_continuous_collision_detection_and_physics_library.metadata",
     ])
 
     # Godot 4.7.2's COPYRIGHT.txt names 102 libraries besides Godot itself.
@@ -64,5 +105,10 @@ def _the_editor_carries_the_bundled_libraries(env, target):
 def bundled_packages_test_suite(name):
     test_suite(
         name = name,
+        basic_tests = [
+            _test_a_trees_libraries_come_from_its_copyright,
+            _test_a_releases_libraries_come_from_the_pinned_file,
+            _test_exactly_one_source_is_required,
+        ],
         tests = [_test_the_editor_carries_the_bundled_libraries],
     )

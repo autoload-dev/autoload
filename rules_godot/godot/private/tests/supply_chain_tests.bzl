@@ -1,7 +1,7 @@
 """Repositories of the ruleset give their targets the package metadata of the software they hold."""
 
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
-load("//godot/private:supply_chain.bzl", "source_purl", "write_metadata_package", "write_package_metadata")
+load("//godot/private:supply_chain.bzl", "source_purl", "write_bundled_packages", "write_metadata_package", "write_package_metadata")
 load(":copyright_excerpt.bzl", "COPYRIGHT_EXCERPT")
 load(":mocks.bzl", "mocks")
 
@@ -70,21 +70,17 @@ def _test_metadata_for_some_packages_writes_no_repo_file(env):
 # metadata, with its part of the file as the license text; :bundled_packages gathers them.
 def _test_each_bundled_library_is_a_package_of_its_own(env):
     ctx = mocks.repository_ctx(files = {"/tree/COPYRIGHT.txt": COPYRIGHT_EXCERPT}, tree = [])
-    write_package_metadata(ctx, "pkg:generic/godot@4.7.2", copyright = "/tree/COPYRIGHT.txt")
+    write_bundled_packages(ctx, "/tree/COPYRIGHT.txt")
     files = _files(ctx)
     env.expect.that_collection(files.keys()).contains_exactly([
-        "REPO.bazel",
-        "_package_metadata/BUILD.bazel",
-        "_package_metadata/bullet_continuous_collision_detection_and_physics_library.txt",
-        "_package_metadata/servers_audio_effects_audio_effect_pitch_shift_cpp.txt",
-        "_package_metadata/smol_v.txt",
-        "_package_metadata/zlib.txt",
+        "BUILD.bazel",
+        "bullet_continuous_collision_detection_and_physics_library.txt",
+        "servers_audio_effects_audio_effect_pitch_shift_cpp.txt",
+        "smol_v.txt",
+        "zlib.txt",
     ])
-    env.expect.that_str(files["REPO.bazel"]).equals(
-        'repo(default_package_metadata = ["//_package_metadata:package_metadata"])\n',
-    )
-    env.expect.that_str(files["_package_metadata/zlib.txt"]).contains("Copyright: 1995-2026, Jean-loup Gailly and Mark Adler")
-    build = files["_package_metadata/BUILD.bazel"]
+    env.expect.that_str(files["zlib.txt"]).contains("Copyright: 1995-2026, Jean-loup Gailly and Mark Adler")
+    build = files["BUILD.bazel"]
     for text in [
         'srcs = [":bullet_continuous_collision_detection_and_physics_library", ":servers_audio_effects_audio_effect_pitch_shift_cpp", ":smol_v", ":zlib"],',
         'package_metadata = [":zlib.metadata"],',
@@ -99,11 +95,21 @@ def _test_each_bundled_library_is_a_package_of_its_own(env):
         env.expect.that_str(build).contains(text)
 
 def _test_without_copyright_no_package_is_bundled(env):
-    for copyright in [None, "/tree/COPYRIGHT.txt"]:
+    ctx = mocks.repository_ctx(tree = [])
+    write_bundled_packages(ctx, "/tree/COPYRIGHT.txt")
+    env.expect.that_collection(_files(ctx).keys()).contains_exactly(["BUILD.bazel"])
+    env.expect.that_str(_files(ctx)["BUILD.bazel"]).contains('name = "bundled_packages",\n    srcs = [],')
+
+# The metadata package names the libraries of the software's Godot from their repository.
+def _test_the_metadata_package_names_the_bundled_packages(env):
+    for bundled, srcs in [
+        ("@@godot_bundled_packages//:bundled_packages", '["@@godot_bundled_packages//:bundled_packages"]'),
+        (None, "[]"),
+    ]:
         ctx = mocks.repository_ctx(tree = [])
-        write_package_metadata(ctx, "pkg:generic/godot@4.7.2", copyright = copyright)
-        env.expect.where(copyright = copyright).that_str(_files(ctx)["_package_metadata/BUILD.bazel"]).contains(
-            'name = "bundled_packages",\n    srcs = [],',
+        write_package_metadata(ctx, "pkg:generic/godot@4.7.2", bundled_packages = bundled)
+        env.expect.where(bundled = bundled).that_str(_files(ctx)["_package_metadata/BUILD.bazel"]).contains(
+            'name = "bundled_packages",\n    srcs = %s,' % srcs,
         )
 
 def supply_chain_test_suite(name):
@@ -118,5 +124,6 @@ def supply_chain_test_suite(name):
             _test_metadata_for_some_packages_writes_no_repo_file,
             _test_each_bundled_library_is_a_package_of_its_own,
             _test_without_copyright_no_package_is_bundled,
+            _test_the_metadata_package_names_the_bundled_packages,
         ],
     )

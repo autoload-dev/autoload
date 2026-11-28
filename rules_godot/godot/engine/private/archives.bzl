@@ -16,9 +16,8 @@ _VERSION_ATTR = attr.string(
     mandatory = True,
 )
 
-_COPYRIGHT_ATTR = attr.label(
-    doc = "Godot's COPYRIGHT.txt of the version, whose bundled libraries the repository's package metadata names beside Godot; none without.",
-    allow_single_file = True,
+_BUNDLED_PACKAGES_ATTR = attr.label(
+    doc = "The `:bundled_packages` of the godot_bundled_packages repository of the version's COPYRIGHT.txt, which the payloads carry beside Godot; none without.",
 )
 
 # ==== Editor archive ==========================================================
@@ -33,7 +32,7 @@ _EDITOR_ARCHIVE_ATTRS = {
         mandatory = True,
     ),
     "version": _VERSION_ATTR,
-    "copyright": _COPYRIGHT_ATTR,
+    "bundled_packages": _BUNDLED_PACKAGES_ATTR,
     "binary": attr.string(
         doc = "Path of the editor executable inside the archive.",
         mandatory = True,
@@ -74,7 +73,7 @@ def editor_archive_impl(ctx, *, _fail = fail):
     write_package_metadata(
         ctx,
         source_purl("godot", ctx.attr.version, integrity = ctx.attr.integrity),
-        copyright = ctx.attr.copyright,
+        bundled_packages = ctx.attr.bundled_packages,
     )
 
     # The integrity-pinned archive determines the contents, so Bazel's repo contents
@@ -339,7 +338,7 @@ def templates_archive_impl(ctx, *, _fail = fail):
     write_package_metadata(
         ctx,
         source_purl("godot", ctx.attr.version, integrity = ctx.attr.integrity),
-        copyright = ctx.attr.copyright,
+        bundled_packages = ctx.attr.bundled_packages,
     )
 
     # The integrity-pinned archive determines the contents, so Bazel's repo contents
@@ -356,7 +355,7 @@ _TEMPLATES_ARCHIVE_ATTRS = {
         mandatory = True,
     ),
     "version": _VERSION_ATTR,
-    "copyright": _COPYRIGHT_ATTR,
+    "bundled_packages": _BUNDLED_PACKAGES_ATTR,
     "platform": attr.string(
         doc = "Godot platform whose templates the repository extracts: linux, macos or ios.",
         mandatory = True,

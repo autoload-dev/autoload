@@ -125,6 +125,9 @@ godot_engine_build = repository_rule(
             mandatory = True,
             allow_single_file = [".json"],
         ),
+        "bundled_packages": attr.label(
+            doc = "The `:bundled_packages` of the godot_bundled_packages repository of the tree's COPYRIGHT.txt, which the recipe's engine carries; none without.",
+        ),
         "platform": attr.string(
             doc = "Target operating system: linux, macos, android or ios.",
             mandatory = True,

@@ -16,7 +16,7 @@ def _editor(*, tree = [_BINARY], **overrides):
             "integrity": _INTEGRITY,
             "version": "4.7.2",
             "binary": _BINARY,
-            "copyright": None,
+            "bundled_packages": None,
             "_prebuilt_bzl": "@@//godot/engine/private:prebuilt.bzl",
             "_build_template": "editor_archive.BUILD.tpl",
         } | overrides,

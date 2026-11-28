@@ -16,10 +16,8 @@ _MANIFEST = """<manifest android:versionName="${godotLibraryVersion}">
 """
 _PYTHON = "/usr/bin/python3"
 
-# Godot's license text in the engine tree, beside its descriptor, and its COPYRIGHT.txt,
-# which the tree lacks here.
+# Godot's license text in the engine tree, beside its descriptor.
 _LICENSE = mocks.path(_TREE).dirname + "/LICENSE.txt"
-_COPYRIGHT = mocks.path(_TREE).dirname + "/COPYRIGHT.txt"
 
 def _shell(*, version = "4.7.2", manifest = _MANIFEST, execute = {}, **overrides):
     ctx = mocks.repository_ctx(
@@ -48,7 +46,7 @@ def _shell(*, version = "4.7.2", manifest = _MANIFEST, execute = {}, **overrides
             _LICENSE: "Copyright (c) Godot Engine contributors.",
         },
         execute = execute,
-        path = lambda value: mocks.path(value, exists = str(value) != _COPYRIGHT) if str(value) in (str(_TREE), _LICENSE, _COPYRIGHT) else str(value),
+        path = lambda value: mocks.path(value) if str(value) in (str(_TREE), _LICENSE) else str(value),
     )
     errors, fail_ = mocks.errors()
     android_shell_impl(ctx, _fail = fail_)
