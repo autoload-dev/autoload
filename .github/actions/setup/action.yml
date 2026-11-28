@@ -126,7 +126,9 @@ runs:
       shell: bash
       run: |
         if [[ "$RUNNER_OS" == macOS ]]; then
-          [[ -d "/Applications/Google Chrome.app" ]] || brew install --cask google-chrome
+          # A persistent runner runs several jobs at once on one Homebrew; one installs at a time.
+          [[ -d "/Applications/Google Chrome.app" ]] || lockf -k /tmp/autoload-chrome-install.lock \
+            bash -c '[[ -d "/Applications/Google Chrome.app" ]] || brew install --cask google-chrome'
         elif ! for browser in google-chrome google-chrome-stable chromium chrome-headless-shell; do
           command -v "$browser"; done | grep -q .; then
           # Google publishes its Linux package for x86_64 only, as the Linux runner is.
