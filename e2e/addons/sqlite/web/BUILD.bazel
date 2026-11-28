@@ -7,8 +7,8 @@ load("@rules_python//python:defs.bzl", "py_test")
 godot_resources(
     name = "main",
     srcs = [
-        "main.gd",
-        "main.tscn",
+        "main/main.gd",
+        "main/main.tscn",
     ],
     deps = ["@autoload_sqlite//sqlite"],
 )
