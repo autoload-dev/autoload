@@ -28,6 +28,7 @@ bzl_library(
     name = "godot_cpp",
     srcs = ["godot_cpp.bzl"],
     deps = [
+        ":godot_cpp_api",
         "//godot/private:patches",
         "//godot/private:repository_templates",
         "//godot/private:supply_chain",
@@ -83,4 +84,9 @@ bzl_library(
 bzl_library(
     name = "bindings",
     srcs = ["bindings.bzl"],
+)
+
+bzl_library(
+    name = "godot_cpp_api",
+    srcs = ["godot_cpp_api.bzl"],
 )

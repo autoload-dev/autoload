@@ -51,6 +51,8 @@ exports_files(
     [
         ".bazelversion",
         ".buildifier.json",
+        # The license every released module carries a copy of (tools/generate).
+        "LICENSE",
         # It names the module to the lint check's per-file convention rules (tools/lint).
         "MODULE.bazel",
         "pyproject.toml",

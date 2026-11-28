@@ -43,7 +43,6 @@ class ReleaseArchiveTest(unittest.TestCase):
             [
                 "--format=tar",
                 "--prefix=release/",
-                "--add-file=LICENSE",
                 "autoload_widget-v1.0.0:addons/widget",
             ],
         )

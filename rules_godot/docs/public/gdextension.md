@@ -73,7 +73,9 @@ godot_cpp_bindings(
 Then add `deps = ["@godot_cpp//:godot_cpp"]` to your extension. The repository
 pins **godot-cpp 10.0.0**, with the Godot 4.7 API, to commit
 `507ed9d840c01a3c5b2a39af8bb4000bfac30bf5` and a SHA-256 digest. Its versioning
-is independent of the engine's versioning.
+is independent of the engine's versioning. For another godot-cpp, set `version`
+to its tag or commit and `sha256` to the archive's digest. `version` replaces
+`{version}` in `urls` and `strip_prefix`, and the package metadata names it.
 
 `enabled_classes` uses upstream's build profile to keep selected classes,
 required runtime classes and ancestors. Methods referencing omitted classes

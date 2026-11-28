@@ -1,5 +1,6 @@
 """The generator writes a module, or one add-on into a module, with derived names."""
 
+import unittest
 from pathlib import Path
 
 from tools.addons.declarations import SEGMENT
@@ -66,7 +67,7 @@ class GenerateTest(RepositoryTestCase):
         source = (self.root / ".bcr/addons/widget/source.template.json").read_text()
         self.assertIn('"strip_prefix": "autoload_widget-{VERSION}"', source)
         self.assertIn(
-            "@autoload_widget//...",
+            'module_path: "bcr/smoke"',
             (self.root / ".bcr/addons/widget/presubmit.yml").read_text(),
         )
         self.assertIn(
@@ -106,6 +107,9 @@ class GenerateTest(RepositoryTestCase):
 
 
 class SharedFilesTest(RepositoryTestCase):
+    def read(self, path: str) -> str:
+        return (self.root / "addons" / path).read_text()
+
     def test_the_shared_files_are_what_the_generator_writes(self) -> None:
         generate("widget", root=self.root)
         shared = shared_files("widget", self.root)
@@ -115,6 +119,29 @@ class SharedFilesTest(RepositoryTestCase):
         self.assertNotIn(Path("addons/widget/MODULE.bazel"), shared)
         for path, text in shared.items():
             self.assertEqual(text, (self.root / path).read_text(), path)
+
+    def test_every_module_carries_the_repository_license(self) -> None:
+        generate("widget", root=self.root)
+        license_text = (self.root / "LICENSE").read_text()
+        self.assertEqual(license_text, self.read("widget/LICENSE"))
+        self.assertEqual(
+            license_text, shared_files("widget", self.root)[Path("addons/widget/LICENSE")]
+        )
+        self.assertIn('text = "LICENSE"', self.read("widget/BUILD.bazel"))
+
+    def test_a_module_with_third_party_archives_shares_their_declaration(self) -> None:
+        generate("widget", root=self.root)
+        archive = Path("addons/widget/third_party/archive.bzl")
+        self.assertNotIn(archive, shared_files("widget", self.root))
+        archives = self.root / "addons/widget/third_party/archives.bzl"
+        archives.parent.mkdir()
+        archives.write_text('load(":archive.bzl", "github_archive")\n')
+        shared = shared_files("widget", self.root)
+        self.assertIn("def github_archive(", shared[archive])
+        self.assertIn(
+            "archive_versions_test(",
+            shared[Path("addons/widget/tests/archives/BUILD.bazel")],
+        )
 
     def test_every_shared_file_is_one_of_the_template(self) -> None:
         template = {relative for _, relative in template_files("module")}
@@ -158,3 +185,7 @@ class DeclarationTest(RepositoryTestCase):
         self.assertTrue((self.root / "examples/addons/selftest/project.godot").is_file())
         self.assertNotIn(f"addons/{SELFTEST}", addon_modules(self.root))
         self.assertNotIn("autoload_selftest", (self.root / SEGMENT).read_text())
+
+
+if __name__ == "__main__":
+    unittest.main()

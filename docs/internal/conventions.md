@@ -387,10 +387,11 @@ names each by the module name its `MODULE.bazel` declares. The check reads that 
 
 **Add-on modules own the files of the generator's template.** Each module owns the files of
 the generator's module template, such as `MODULE.bazel`, `README.md`, `REPO.bazel`,
-`BUILD.bazel`, `.bazelrc`, `.bazelignore` and its registry test module `bcr/smoke`, and its
-registry templates in `.bcr/addons/<module>/`: `metadata.template.json`, `presubmit.yml` and
-`source.template.json`. The contents of those that every module shares are what the
-generator writes ([shared-module-files-as-generated](#shared-module-files-as-generated)).
+`BUILD.bazel`, `.bazelrc`, `.bazelignore` and its registry test module `bcr/smoke`, its copy
+of the repository's `LICENSE`, and its registry templates in `.bcr/addons/<module>/`:
+`metadata.template.json`, `presubmit.yml` and `source.template.json`. The contents of those
+that every module shares are what the generator writes
+([shared-module-files-as-generated](#shared-module-files-as-generated)).
 
 ## registry-templates-have-their-module
 
@@ -537,15 +538,17 @@ it.
 ## shared-module-files-as-generated
 
 **Add-on modules keep the shared files as the add-on generator writes them.** Some files of
-the generator's module template are settings every module shares: `.bazelignore`, `.bazelrc`,
-`.bazelversion`, `.gitattributes`, `.gitignore`, `REPO.bazel` and the registry test module's
-`.bazelrc` and `.bazelversion`, and the registry templates `presubmit.yml`,
-`source.template.json` and `metadata.template.json` in `.bcr/addons/<module>/`. They are
-listed in [tools/addons/new.py](../../tools/addons/new.py) and stay as the generator writes
-them, so a change of the template or of the ruleset's metadata reaches every module:
-`aspect generate` writes them again for every add-on module, and the check compares each with
-what the generator writes. A module's own files, such as its `MODULE.bazel` and `README.md`,
-are outside it.
+the generator's module template are settings every module shares: `.bazelignore`,
+`.bazelrc`, `.bazelversion`, `.gitattributes`, `.gitignore`, `REPO.bazel` and the registry
+test module's `.bazelrc` and `.bazelversion`, and the registry templates `presubmit.yml`,
+`source.template.json` and `metadata.template.json` in `.bcr/addons/<module>/`. A module
+also shares its copy of the repository's `LICENSE` and, if it declares third-party archives
+in `third_party/archives.bzl`, the helper `third_party/archive.bzl` and the test of the
+archives' versions in `tests/archives/`. [tools/addons/new.py](../../tools/addons/new.py)
+names them all, and they stay as the generator writes them, so a change of the template or
+of the ruleset's metadata reaches every module: `aspect generate` writes them again for
+every add-on module, and the check compares each with what the generator writes. A module's
+own files, such as its `MODULE.bazel` and `README.md`, are outside it.
 
 ## region-headers-named-in-head
 
