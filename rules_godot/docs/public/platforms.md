@@ -628,7 +628,8 @@ rules_godot calls the operating system `web`; Bazel's constraint is
 `@platforms//os:emscripten`. `@autoload_rules_godot//godot/platforms:is_web` is the predicate
 for `select()`, and a consumer's own export platform declares `operating_system = "web"` with
 `cpus = ["@platforms//cpu:wasm32"]`. A web pack has the feature tags `web`, `wasm32`,
-`nothreads` and `web_noextensions`. The registered engines supply the web runtime from
+`nothreads` and `web_noextensions`, `web_extensions` where it has
+[web extensions](gdextension.md#web-extensions). The registered engines supply the web runtime from
 Godot's prebuilt web templates, with and without threads, in the release and debug variants; the templates are fetched only when an application builds for
 the web. The runtime names its Godot version and the Emscripten version its templates were
 built with, and the engine version check covers it.
@@ -666,9 +667,9 @@ The page follows the pack's `export_options`, under the names of Godot's export 
 
 The web runs the Compatibility renderer: a project that selects Forward+ or Mobile for the
 web gets a note when its application is packaged. Godot exports no C# project for the web,
-and its application fails analysis. An application whose add-ons bring extensions follows
-[missing extension libraries](gdextension.md#missing-extension-libraries): it fails and
-names them, or builds without them.
+and its application fails analysis. An application whose add-ons bring extensions ships their
+[web side modules](gdextension.md#web-extensions); an add-on without one follows
+[missing extension libraries](gdextension.md#missing-extension-libraries).
 
 ### Threads
 

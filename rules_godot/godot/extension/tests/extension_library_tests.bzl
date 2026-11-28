@@ -14,6 +14,7 @@ load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("//godot/extension:defs.bzl", "godot_extension", "godot_extension_library")
 load("//godot/private:providers.bzl", "GodotExtensionInfo")
+load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 load(":descriptor_tests.bzl", "descriptor_contents")
 load(":library_fixtures.bzl", "dynamic_xcframework_fixture")
 
@@ -110,6 +111,35 @@ def _ios_extension_carries_the_frameworks_the_code_links(env, target):
     ]
     env.expect.that_collection(binaries).contains("FixtureCore")
 
+_WEB_THREADS = {"//command_line_option:platforms": str(Label("//godot/platforms:web_wasm32_threads"))}
+
+def _test_prebuilt_side_module_loads_on_the_web(name):
+    fixture_file(name = name + "_module", out = name + "/libprebuilt.wasm")
+    godot_extension(
+        name = name + "_extension",
+        entry_symbol = "prebuilt_init",
+        library = select({
+            "//godot/platforms:is_web": ":" + name + "_module",
+            "//conditions:default": None,
+        }),
+        tags = ["manual"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_extension",
+        impl = _prebuilt_side_module_loads_on_the_web,
+        attr_values = _SMALL,
+        config_settings = _WEB_THREADS,
+    )
+
+# A prebuilt .wasm side module is the web's dynamic library; its feature tags carry the
+# threads ABI, as Godot's own web libraries do.
+def _prebuilt_side_module_loads_on_the_web(env, target):
+    library = target[GodotExtensionInfo].library
+    env.expect.that_str(library.link_kind).equals("dynamic")
+    env.expect.that_str(library.tags).equals("web.wasm32.threads.release")
+    env.expect.that_str(library.file.basename).equals("libprebuilt.wasm")
+
 def extension_library_test_suite(name):
     test_suite(
         name = name,
@@ -118,5 +148,6 @@ def extension_library_test_suite(name):
             _test_library_is_named_after_library_name,
             _test_entry_symbol_mismatches_fail,
             _test_ios_extension_carries_the_frameworks_the_code_links,
+            _test_prebuilt_side_module_loads_on_the_web,
         ],
     )

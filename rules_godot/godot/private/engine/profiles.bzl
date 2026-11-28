@@ -442,11 +442,10 @@ def _web_owned_options():
         _owned(
             "variant/extensions_support",
             "web-extensions",
-            derive = "constant",
+            derive = "web_extensions",
             placement = "preset",
             when = "always",
             authored = "reject",
-            value = False,
         ),
     ]
 
@@ -710,7 +709,33 @@ _REJECTED_OPTIONS_4_8["linux"]["debug/export_debug_symbols"] = "native-debug-sym
 
 _REJECTED_OPTIONS_4_8["macos"]["debug/export_debug_symbols"] = "native-debug-symbols"
 
+# The Emscripten release that Godot's official web templates of a minor were built with,
+# which builds the extensions those templates load: its archive's revision on
+# emscripten-releases and the archive's SHA-256 per execution platform, from emsdk's release
+# table (bazel/revisions.bzl). Another version fails.
+_GODOT_4_7["emscripten"] = {
+    "version": "4.0.20",
+    "revision": "c387d7a7e9537d0041d2c3ae71b7538cc978104e",
+    "sha256": {
+        "linux_x86_64": "a06e7ddda0c168f7ad52e6e0509c98db3545dcb254d3b9052e9e6b8423eaee7d",
+        "linux_arm64": "a42862782c1d23330d2f55936e451f54ed4a630f9d7430ffd1936dc6967a29d1",
+        "macos_x86_64": "6c4e8445a8e47e55fcd99789ec023d614c8dbd916afe64e9feb7a292c5070cd2",
+        "macos_arm64": "144433e905ec1db726df9128e99624b9b4a3716e96dfb37dde22e2294a675c07",
+    },
+}
+
 _GODOT_4_8 = dict(_GODOT_4_7)
+
+_GODOT_4_8["emscripten"] = {
+    "version": "6.0.12",
+    "revision": "6e9f6885cb17a3d6c8fd488a5cff730f50aba61d",
+    "sha256": {
+        "linux_x86_64": "7b073a102b07eca5a0fe344037681e53162639f3540432456874c0446a5e8fa7",
+        "linux_arm64": "207b288eef73de3aeb3e5e492b76e3e395d049eee9f6c96bfc4396ba275a9bac",
+        "macos_x86_64": "2a36ac0619ad5e065d8b520c62ca8228ddf18aaf9624d4e1959b06fc4b9ebfab",
+        "macos_arm64": "8e91c0eca2b8728aa2babb32b805318eaf5e8d6652c6535163d0ea467a6d907c",
+    },
+}
 
 _GODOT_4_8["rejected_export_options"] = _REJECTED_OPTIONS_4_8
 
@@ -846,3 +871,16 @@ def engine_profile(version):
     if series not in _PROFILES:
         fail("rules_godot has no engine profile for Godot %s" % series)
     return _PROFILES[series]
+
+def emscripten_release(version):
+    """
+    Return the Emscripten release that builds an engine version's web extensions.
+
+    Args:
+        version: Canonical engine version.
+
+    Returns:
+        The profile's emscripten dict, or None for a version without a profile, whose web
+        extensions then have no toolchain.
+    """
+    return _PROFILES.get(godot_series(version), {}).get("emscripten")

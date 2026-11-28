@@ -9,6 +9,7 @@ visibility is public.
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("//godot/engine/private:resolution.bzl", "EDITOR_TOOLCHAIN_TYPE", "RUNTIME_TOOLCHAIN_TYPE")
+load("//godot/extension/private/emscripten:sdk.bzl", "EXECUTION_PLATFORMS", "sdk_repository_name")
 load("//godot/private/config:settings.bzl", "CPU_CONSTRAINTS", "ENVIRONMENT_CONSTRAINTS", "OPERATING_SYSTEM_CONSTRAINTS")
 
 visibility("public")
@@ -85,6 +86,42 @@ def _component_toolchains_impl(
         tags = tags,
         **placement
     )
+
+def _emscripten_toolchains_impl(name, visibility, version, engine, default_engine, tags):
+    setting = _engine_setting(name, engine, default_engine, tags)
+    for execution, platform in EXECUTION_PLATFORMS.items():
+        for kind in ["nothreads", "threads"]:
+            native.toolchain(
+                name = "%s_%s_%s" % (name, execution, kind),
+                exec_compatible_with = platform.constraints,
+                target_compatible_with = [
+                    "@platforms//os:emscripten",
+                    "@platforms//cpu:wasm32",
+                    Label("//godot/platforms:" + kind),
+                ],
+                target_settings = [setting],
+                toolchain = "@%s//:cc_toolchain_%s" % (sdk_repository_name(version, execution), kind),
+                toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
+                visibility = visibility,
+                tags = tags,
+            )
+
+emscripten_toolchains = macro(
+    doc = """
+    Register the C/C++ toolchains that build an engine's web extensions.
+
+    Declares one toolchain per execution platform an Emscripten release exists for and per
+    threads ABI, `<name>_<execution>_<threads|nothreads>`, of the engine's Emscripten version,
+    constrained to the web and the engine.
+    """,
+    implementation = _emscripten_toolchains_impl,
+    attrs = {
+        "version": attr.string(doc = "The Emscripten version of the engine's web templates.", mandatory = True, configurable = False),
+        "engine": attr.string(doc = "The engine's name; empty for an unnamed default engine.", configurable = False),
+        "default_engine": attr.bool(doc = "Whether the named engine is the default one.", configurable = False),
+        "tags": attr.string_list(doc = "Tags of every declared target.", configurable = False),
+    },
+)
 
 component_toolchains = macro(
     doc = """

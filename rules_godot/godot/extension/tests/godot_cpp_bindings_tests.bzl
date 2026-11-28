@@ -55,6 +55,8 @@ def _bindings(*, api = None, api_path = _API_PATH, execute = {}, **overrides):
             "_defs": "@@//godot/extension/private:bindings.bzl",
             "_cc_library": "@@rules_cc+//cc:cc_library.bzl",
             "_windows_constraint": "@@platforms//os:windows",
+            "_web": "@@//godot/platforms:is_web",
+            "_web_nothreads": "@@//godot/platforms:is_web_nothreads",
             "_build_template": "godot_cpp.BUILD.tpl",
         } | overrides,
         files = {api_path: api or _api(), "LICENSE.md": "Copyright (c) godot-cpp contributors."},
@@ -143,9 +145,10 @@ def _test_bits_and_precision_reach_the_bindings(env):
     substitutions = _substitutions(ctx)
     env.expect.that_str(substitutions["{BITS}"]).equals(repr("32"))
     env.expect.that_str(substitutions["{PRECISION}"]).equals(repr("double"))
+
+    # THREADS_ENABLED follows the target platform in the BUILD file's select().
     env.expect.that_str(substitutions["{DEFINES}"]).equals(starlark_list([
         "GDEXTENSION",
-        "THREADS_ENABLED",
         "REAL_T_IS_DOUBLE",
         "DEBUG_ENABLED",
         "HOT_RELOAD_ENABLED",
@@ -153,8 +156,8 @@ def _test_bits_and_precision_reach_the_bindings(env):
 
 def _test_debug_features_define_debug_macros(env):
     for debug_features, defines in [
-        (True, ["GDEXTENSION", "THREADS_ENABLED", "DEBUG_ENABLED", "HOT_RELOAD_ENABLED"]),
-        (False, ["GDEXTENSION", "THREADS_ENABLED"]),
+        (True, ["GDEXTENSION", "DEBUG_ENABLED", "HOT_RELOAD_ENABLED"]),
+        (False, ["GDEXTENSION"]),
     ]:
         ctx, errors = _bindings(debug_features = debug_features)
         env.expect.where(debug_features = debug_features).that_collection(errors).contains_exactly([])

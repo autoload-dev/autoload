@@ -117,3 +117,41 @@ _ENGINES = [
     for case in _CASES
     for engine in _ENGINES
 ]
+
+# Run test: a web application with a C ABI extension starts in this host's headless
+# Chromium browser and loads the extension's side module, per engine and threads ABI.
+_EXTENSION = "//godot/platforms/private/tests/web/fixtures/extension:app"
+
+_EXTENSION_CASES = {
+    "nothreads_stable": ("//godot/platforms:web_wasm32", "stable"),
+    "threads_stable": ("//godot/platforms:web_wasm32_threads", "stable"),
+    "nothreads_beta": ("//godot/platforms:web_wasm32", "beta"),
+    "threads_beta": ("//godot/platforms:web_wasm32_threads", "beta"),
+}
+
+[
+    configured_outputs(
+        name = "extension_app_" + case,
+        engine = engine,
+        platform = platform,
+        runfiles = True,
+        tags = ["manual"],
+        target = _EXTENSION,
+    )
+    for case, (platform, engine) in _EXTENSION_CASES.items()
+]
+
+[
+    py_test(
+        name = "web_extension_loads_in_the_browser_%s_test" % case,
+        size = "medium",
+        srcs = ["extension_run_test.py"],
+        data = [":extension_app_" + case],
+        main = "extension_run_test.py",
+        tags = [
+            "godot_process",
+            "web",
+        ],
+    )
+    for case in _EXTENSION_CASES
+]

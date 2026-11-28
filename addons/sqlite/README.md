@@ -61,7 +61,12 @@ Run from the repository root:
 bazel run //examples/addons/sqlite:edit
 bazel run //examples/addons/sqlite:update
 bazel build //examples/addons/sqlite:pack
+bazel run //examples/addons/sqlite:app --platforms=@autoload_rules_godot//godot/platforms:web_wasm32
 ```
+
+On the web the extension builds as a side module with the ruleset's Emscripten toolchain and
+runs in the browser, with and without threads; a database in memory works there, while
+persistence in the browser's storage is untested.
 
 The [project layout guide](../../rules_godot/docs/public/project-layout.md) explains the separate
 add-on, demo and test packages, explicit dependencies and sidecars. The

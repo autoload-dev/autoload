@@ -17,6 +17,7 @@ load(
     "godot_engine_source",
     "godot_engine_tree",
 )
+load("//godot/extension/private/emscripten:sdk.bzl", "emscripten_sdk")
 load(
     "//godot/platforms/private:android_toolchains.bzl",
     "android_toolchain_repositories",
@@ -188,6 +189,7 @@ _ENGINE_TAG_ATTRIBUTES = {
 # The repository rules and macros that plan_engines declarations name.
 _ENGINE_RULES = {
     "engine_hub": engine_hub,
+    "emscripten_sdk": emscripten_sdk,
     "engine_toolchains": engine_toolchains,
     "godot_android_shell": godot_android_shell,
     "godot_bundled_packages": godot_bundled_packages,

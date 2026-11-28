@@ -30,6 +30,7 @@ _FACTS = {
         "threads/godot_pool_size": 4,
         "threads/emscripten_pool_size": 8,
         "variant/thread_support": False,
+        "variant/extensions_support": False,
     },
     "settings": {
         "application/config/name": "Game",
@@ -169,6 +170,8 @@ class ExportTest(unittest.TestCase):
                 analysis_defaults="{}",
                 images=images,
                 shell=None,
+                offline_page=None,
+                extension=[],
                 output=root / "site",
                 archive=root / "site.zip",
             )

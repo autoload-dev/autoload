@@ -230,6 +230,7 @@ bzl_library(
         "//godot/engine/private:extension_plan",
         "//godot/engine/private:hub",
         "//godot/engine/private:repositories",
+        "//godot/extension/private/emscripten:sdk",
         "//godot/platforms/private:android_toolchains",
         "@bazel_tools//tools/build_defs/repo:http.bzl",
     ],

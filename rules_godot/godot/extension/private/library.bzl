@@ -34,6 +34,8 @@ _LOADABLE = {
         versioned = True,
         accepted = _SHARED % "dylib" + " or " + _FRAMEWORK,
     ),
+    # A side module, which the web templates with GDExtension support load.
+    "web": struct(kinds = ["dynamic"], suffixes = ["wasm"], versioned = False, accepted = "a side module (godot_extension_library, or a target with one .wasm)"),
     "ios": struct(
         kinds = ["static", "framework"],
         suffixes = [],
@@ -54,7 +56,7 @@ def _dynamic_file(library):
     """The shared library a library to link loads, under its own name."""
     return library.resolved_symlink_dynamic_library or library.dynamic_library
 
-def _is_shared_library(file, suffixes = ["so", "dylib"], versioned = True):
+def _is_shared_library(file, suffixes = ["so", "dylib", "wasm"], versioned = True):
     return file.extension in suffixes or (versioned and "so" in suffixes and ".so." in file.basename)
 
 def _framework_binary(directory, files):
@@ -333,7 +335,7 @@ def configured_library(ctx, target, prefix, context):
         ctx: Rule context of the extension.
         target: The library target of this configuration.
         prefix: The descriptor's directory with a trailing slash, or empty.
-        context: The configured context.
+        context: The configured context, from library_context.
 
     Returns:
         A struct of library (the configured extension library), resource_paths (dict of
@@ -371,6 +373,7 @@ def configured_library(ctx, target, prefix, context):
             },
             beside_executable = data.beside_executable,
             debug_symbols = linked_dsym(target),
+            toolchain_id = context.toolchain_id,
         ),
         resource_paths = placement.resource_paths,
         dependency_paths = sorted(dependency_paths),
@@ -386,7 +389,7 @@ LIBRARY_ATTRS = {
     ),
 } | PLATFORM_ATTRS | VARIANT_ATTRS
 
-def library_context(ctx):
+def library_context(ctx, toolchain_id = ""):
     """
     Return what the configuration fixes for an extension library, and its feature tags.
 
@@ -395,10 +398,13 @@ def library_context(ctx):
 
     Args:
         ctx: Rule context of a rule with LIBRARY_ATTRS.
+        toolchain_id: The identifier of the C/C++ toolchain that linked the library, or
+            empty for one the extension does not know.
 
     Returns:
         A struct of operating_system, cpu, environment, tool (whether the configuration
-        is the tool configuration) and tags (the feature tags, joined with dots).
+        is the tool configuration), tags (the feature tags, joined with dots) and
+        toolchain_id.
     """
     platform = target_platform(ctx)
     if not platform.operating_system or not platform.cpu:
@@ -415,10 +421,15 @@ def library_context(ctx):
     tags = [platform.operating_system, platform.cpu]
     if platform.environment == "simulator":
         tags.append("simulator")
+
+    # Godot's own web libraries carry threads or nothreads: the two ABIs of the web.
+    if platform.operating_system == "web":
+        tags.append("threads" if platform.threads else "nothreads")
     return struct(
         operating_system = platform.operating_system,
         cpu = platform.cpu,
         environment = platform.environment,
         tool = tool,
         tags = ".".join(tags + [selected]),
+        toolchain_id = toolchain_id,
     )

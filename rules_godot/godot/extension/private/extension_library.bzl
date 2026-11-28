@@ -10,6 +10,7 @@ load("@rules_apple//apple:aspects.bzl", "framework_provider_aspect")
 load("@rules_apple//apple:providers.bzl", "AppleFrameworkImportInfo")
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain", "use_cc_toolchain")
 load("//godot/private:macros.bzl", "CALLER_PACKAGE")
 load(":ios_framework.bzl", "ios_framework")
 
@@ -23,6 +24,7 @@ GodotExtensionLibraryInfo = provider(
         "entry_symbol": "string: the GDExtension entry symbol, the only symbol the library exports",
         "library": "Target: the shared library, framework import or archive of this configuration",
         "frameworks": "list of AppleFrameworkImportInfo of the dynamic frameworks the code links, which iOS applications embed; empty elsewhere",
+        "toolchain_id": "string: the identifier of the C/C++ toolchain that linked it, such as emscripten-4.0.20 on the web; empty without one",
     },
 )
 
@@ -84,15 +86,26 @@ def _keep_entry_source(name, entry_symbol, generated):
 
 def _shared_library(name, archive, library_name, entry_symbol, attrs):
     """
-    Declare the shared library linked from archive, which exports only the entry symbol.
+    Declare the shared library and the web's side module linked from archive.
+
+    The shared library exports only the entry symbol.
 
     Returns:
-        The name of the shared library target.
+        A struct of the names of the shared library target and of the web's side module.
     """
 
     # A cc_binary names its output after the target. The part after the slash names the
     # delivered file, while the target stays in the macro's namespace.
     shared = name + ".shared/lib" + library_name + ".so"
+
+    # The web loads a side module, whose file Godot's web export names .wasm.
+    side_module = name + ".side_module/lib" + library_name + ".wasm"
+    cc_binary(
+        name = side_module,
+        deps = [":" + archive],
+        linkshared = True,
+        **attrs
+    )
 
     # The library exports only its entry symbol, as godot-cpp's own build does. Each
     # extension links its own godot-cpp, and an exported copy would be shared with the
@@ -138,7 +151,11 @@ def _shared_library(name, archive, library_name, entry_symbol, attrs):
         }),
         **attrs
     )
-    return shared
+    return struct(shared = shared, side_module = side_module)
+
+def _toolchain_id(ctx):
+    toolchain = find_cc_toolchain(ctx, mandatory = False)
+    return toolchain.toolchain_id if toolchain else ""
 
 def _extension_library_rule_impl(ctx):
     library = ctx.attr.library
@@ -148,6 +165,7 @@ def _extension_library_rule_impl(ctx):
             entry_symbol = ctx.attr.entry_symbol,
             library = library,
             frameworks = [code[AppleFrameworkImportInfo] for code in ctx.attr.implementation_deps if AppleFrameworkImportInfo in code],
+            toolchain_id = _toolchain_id(ctx),
         ),
     ]
 
@@ -169,6 +187,9 @@ _extension_library = rule(
             aspects = [framework_provider_aspect],
         ),
     },
+    # The C/C++ toolchain that links the library, whose Emscripten version applications check.
+    toolchains = use_cc_toolchain(mandatory = False),
+    fragments = ["cpp"],
 )
 
 def _is_c_identifier(text):
@@ -209,18 +230,24 @@ def _godot_extension_library_impl(
     cc_library(
         name = archive,
         srcs = [":" + keep],
-        deps = deps,
+        # A threaded side module links its start file from the build, not from emcc's cache.
+        deps = deps + select({
+            Label("//godot/platforms:is_web_threads"): [Label("//godot/extension/private/emscripten:threaded_start_files")],
+            "//conditions:default": [],
+        }),
         linkopts = linkopts,
         alwayslink = True,
         linkstatic = True,
         **(generated | common)
     )
-    shared = _shared_library(name, archive, library_name, entry_symbol, generated | common | {"linkstatic": linkstatic})
+    linked = _shared_library(name, archive, library_name, entry_symbol, generated | common | {"linkstatic": linkstatic})
+    shared = linked.shared
     ios_library = ios_framework(name, shared, library_name, ios_bundle_id, generated) if ios_linkage == "framework" else archive
     _extension_library(
         name = name,
         library = select({
             Label("@platforms//os:ios"): ":" + ios_library,
+            Label("@platforms//os:emscripten"): ":" + linked.side_module,
             "//conditions:default": ":" + shared,
         }),
         implementation_deps = select({

@@ -56,7 +56,7 @@ def _require_minimum_os_versions(minimum_os_versions):
 
 def _resolved_library(ctx, target):
     """
-    Return the configured library's target, entry symbol and linked frameworks.
+    Return the configured library's target, entry symbol, linked frameworks and toolchain.
 
     The frameworks are the AppleFrameworkImportInfo of those a godot_extension_library's
     code links.
@@ -73,10 +73,10 @@ def _resolved_library(ctx, target):
                 info.entry_symbol,
                 target.label,
             ))
-        return info.library, info.entry_symbol, info.frameworks
+        return info.library, info.entry_symbol, info.frameworks, info.toolchain_id
     if not ctx.attr.entry_symbol:
         fail("%s: %s carries no entry symbol; name it with entry_symbol" % (ctx.label, target.label))
-    return target, ctx.attr.entry_symbol, []
+    return target, ctx.attr.entry_symbol, [], ""
 
 def _write_descriptor(ctx, descriptor, configured, entry_symbol):
     """Write the descriptor fragment with the entries of configured, a configured_library or None."""
@@ -143,12 +143,13 @@ def _extension_impl(ctx):
     target = None
     entry_symbol = ctx.attr.entry_symbol
     linked_frameworks = []
+    toolchain_id = ""
     resource_paths = {}
 
     # A label attribute with a Starlark transition arrives as a list, empty for None.
     if ctx.attr.library:
-        target, entry_symbol, linked_frameworks = _resolved_library(ctx, ctx.attr.library[0])
-        configured = configured_library(ctx, target, prefix, library_context(ctx))
+        target, entry_symbol, linked_frameworks, toolchain_id = _resolved_library(ctx, ctx.attr.library[0])
+        configured = configured_library(ctx, target, prefix, library_context(ctx, toolchain_id))
         resource_paths = {resource: descriptor} | configured.resource_paths
     elif ctx.files.data:
         fail("%s: data needs a library in this configuration" % ctx.label)

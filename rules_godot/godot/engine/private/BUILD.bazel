@@ -75,6 +75,7 @@ bzl_library(
         ":engine_selection",
         ":hub",
         ":source_build_rows",
+        "//godot/extension/private/emscripten:sdk",
         "//godot/private:versions",
     ],
 )
@@ -135,6 +136,7 @@ bzl_library(
     srcs = ["registration.bzl"],
     deps = [
         ":resolution",
+        "//godot/extension/private/emscripten:sdk",
         "//godot/private/config:settings",
         "@bazel_skylib//lib:selects",
     ],
