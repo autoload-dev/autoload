@@ -91,6 +91,19 @@ class BrowsersTest(unittest.TestCase):
         command = launch_web.browser_command(chromium, "http://x/", "/tmp/p", options)
         self.assertIn("--lang=de", command)
         self.assertEqual("http://x/", command[-1])
+        firefox = launch_web.Browser("Firefox", "/usr/bin/firefox", False)
+        command = launch_web.browser_command(firefox, "http://x/", "/tmp/p", options)
+        self.assertEqual(
+            [
+                "/usr/bin/firefox",
+                "--new-instance",
+                "--profile",
+                "/tmp/p",
+                "--lang=de",
+                "http://x/",
+            ],
+            command,
+        )
 
 
 class PageTest(unittest.TestCase):

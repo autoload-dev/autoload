@@ -96,7 +96,8 @@ DEFINES = MODE_DEFINES + select({
 })
 
 # The platforms the defines above cover, where the Dart VM runs: elsewhere, such as the web,
-# its libraries are incompatible, so a wildcard build for another platform skips them.
+# its libraries are incompatible, so a wildcard build for another platform skips them. Keep
+# both lists in step with DEFINES.
 DART_COMPATIBLE = select({
     "@platforms//cpu:arm64": [],
     "@platforms//cpu:x86_64": [],

@@ -5,7 +5,8 @@ The library passes its entry symbol on, so an extension of it needs none of its 
 extension fails when its entry_symbol differs from the library's, or when its library
 carries none and it names none. The library's file is named after library_name. On iOS the
 extension carries the dynamic frameworks the library's code links, so applications embed them.
-An engine whose Godot minor has no pinned Emscripten release gets a web toolchain that says so.
+On the web the side module exports only the entry symbol. An engine whose Godot minor has no
+pinned Emscripten release gets a web toolchain that says so.
 """
 
 load("@rules_apple//apple:providers.bzl", "AppleFrameworkImportInfo")
@@ -142,6 +143,25 @@ def _prebuilt_side_module_loads_on_the_web(env, target):
     env.expect.that_str(library.tags).equals("web.wasm32.threads.release")
     env.expect.that_str(library.file.basename).equals("libprebuilt.wasm")
 
+def _test_side_module_exports_only_its_entry_symbol(name):
+    _library(name + "_library", library_name = "fixture")
+    analysis_test(
+        name = name,
+        target = name + "_library.side_module/libfixture.wasm",
+        impl = _side_module_exports_only_its_entry_symbol,
+        attr_values = _SMALL,
+        config_settings = _WEB_THREADS,
+    )
+
+# SIDE_MODULE=2 follows the ABI's SIDE_MODULE=1, so emcc exports only the named function.
+def _side_module_exports_only_its_entry_symbol(env, target):
+    link = [action for action in target.actions if action.mnemonic == "CppLink"][0]
+    argv = link.argv
+    env.expect.that_collection(argv).contains("-sEXPORTED_FUNCTIONS=_archive_fixture_init")
+    env.expect.that_collection(argv).contains("-sSIDE_MODULE=2")
+    last = [index for index, arg in enumerate(argv) if arg.startswith("-sSIDE_MODULE=")][-1]
+    env.expect.that_str(argv[last]).equals("-sSIDE_MODULE=2")
+
 def _test_an_engine_without_an_emscripten_release_says_so(name):
     emscripten_unpinned_toolchain(
         name = name + "_toolchain",
@@ -172,6 +192,7 @@ def extension_library_test_suite(name):
             _test_entry_symbol_mismatches_fail,
             _test_ios_extension_carries_the_frameworks_the_code_links,
             _test_prebuilt_side_module_loads_on_the_web,
+            _test_side_module_exports_only_its_entry_symbol,
             _test_an_engine_without_an_emscripten_release_says_so,
         ],
     )

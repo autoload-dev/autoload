@@ -8,7 +8,7 @@ is missing, in place of Bazel's error that no toolchain matches.
 visibility("public")
 
 def _unpinned_toolchain_impl(ctx):
-    fail("%s has no web toolchain: rules_godot pins no Emscripten release for Godot %s (%s), so its web extensions cannot build. The ruleset pins one per Godot minor, in profiles.bzl." % (
+    fail("%s has no web toolchain: rules_godot pins no Emscripten release for Godot %s (%s), so neither its web extensions nor other C/C++ code for its web builds can build. The ruleset pins one per Godot minor, in profiles.bzl." % (
         ("The engine " + ctx.attr.engine) if ctx.attr.engine else "The default engine",
         ctx.attr.series,
         ctx.attr.version,
