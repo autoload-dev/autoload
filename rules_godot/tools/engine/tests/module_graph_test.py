@@ -39,6 +39,21 @@ class ModuleGraphTest(unittest.TestCase):
             custom.write_text("")
             self.assertEqual(module_dependencies(root, [root / "custom"]), {"same": []})
 
+    def test_positional_optional_flag_excludes_dependencies(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "modules" / "gltf" / "config.py"
+            config.parent.mkdir(parents=True)
+            config.write_text('env.module_add_dependencies("gltf", ["movie"], True)')
+            self.assertEqual(module_dependencies(directory), {"gltf": []})
+
+    def test_non_string_module_dependencies_fail(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "modules" / "numbers" / "config.py"
+            config.parent.mkdir(parents=True)
+            config.write_text('env.module_add_dependencies("numbers", [1])')
+            with self.assertRaisesRegex(ValueError, "Unsupported dependency declaration"):
+                module_dependencies(directory)
+
     def test_dynamic_module_dependencies_fail(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             config = Path(directory) / "modules" / "dynamic" / "config.py"

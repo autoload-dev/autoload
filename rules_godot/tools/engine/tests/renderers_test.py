@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.engine.configure import (
+from tools.engine.recipe_options import (
     engine_renderers,
     has_renderer_switches,
     profile_renderers,

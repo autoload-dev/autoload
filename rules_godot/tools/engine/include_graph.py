@@ -21,11 +21,7 @@ from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, S
 from pathlib import Path, PurePosixPath
 from typing import NamedTuple
 
-try:
-    from .source_tree import HEADER_SUFFIXES, SOURCE_SUFFIXES
-except ImportError:
-    from source_tree import HEADER_SUFFIXES, SOURCE_SUFFIXES
-
+from tools.engine.source_tree import HEADER_SUFFIXES, SOURCE_SUFFIXES
 
 # ==== Inputs ==================================================================
 

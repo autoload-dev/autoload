@@ -11,10 +11,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from typing import NamedTuple
 
-try:
-    from .build_file import Ref, Rule
-except ImportError:
-    from build_file import Ref, Rule
+from tools.engine.build_file import Ref, Rule
 
 # The most sources one analysis action preprocesses. A shard's action runs its sources in
 # parallel on one executor, so a large shard lengthens the critical path; a small one

@@ -1,5 +1,8 @@
-load("@autoload_rules_godot//godot/engine:defs.bzl", "godot_editor_component")
-load(":components.bzl", "desktop_runtimes")
+load(
+    "@autoload_rules_godot//godot/engine:defs.bzl",
+    "godot_editor_component",
+    "godot_runtime_component",
+)
 
 _ORIGIN = "godotengine/godot@2ea68c7, a 4.7 maintenance-branch snapshot"
 
@@ -15,9 +18,13 @@ godot_editor_component(
     version = "4.7.3-rc",
 )
 
-desktop_runtimes(
-    name = "runtime",
+godot_runtime_component(
+    name = "runtime_macos_arm64_release",
+    cpu = "arm64",
     origin = _ORIGIN,
-    payloads = {"macos/arm64/release": "@patched_macos_arm64_template_release//:godot"},
+    platform = "macos",
+    runtime = "@patched_macos_arm64_template_release//:godot",
+    tags = ["manual"],
+    variant = "release",
     version = "4.7.3-rc",
 )

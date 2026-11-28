@@ -12,17 +12,10 @@ Sections: Merging, Unpinned variants.
 """
 
 from collections.abc import Iterable, Mapping, Sequence
-from typing import Any
 
-try:
-    from .build_file import ALWAYS_FIXED, DEFAULT, Plus, Ref, Rule, Select
-except ImportError:
-    from build_file import ALWAYS_FIXED, DEFAULT, Plus, Ref, Rule, Select
+from tools.engine.build_file import ALWAYS_FIXED, DEFAULT, Plus, Ref, Rule, Select
 
 # ==== Merging =================================================================
-
-# A variant that leaves an attribute unset.
-_UNSET = object()
 
 
 def _empty(values: Iterable[object]) -> object:
@@ -50,25 +43,20 @@ def _select(values: Mapping[str, object]) -> Select:
     return Select((*branches, (DEFAULT, default)))
 
 
-def _attribute(rule: str, name: str, values: Mapping[str, object], fixed: bool) -> object:
-    """One attribute of a merged rule; values maps each declaring variant to its value."""
-    first = next(iter(values.values()))
-    if _alike(values.values()) and first is not _UNSET:
-        return first
+def _attribute(rules: Mapping[str, Rule], name: str, fixed: bool) -> object:
+    """One attribute of a merged rule; rules maps each declaring variant to its rule."""
+    values = {
+        setting: rule.attrs[name] for setting, rule in rules.items() if name in rule.attrs
+    }
+    if len(values) == len(rules) and _alike(values.values()):
+        return next(iter(values.values()))
     if fixed:
-        raise ValueError(f"The runtime variants declare {rule} with different {name}")
-    empty = _empty(value for value in values.values() if value is not _UNSET)
-    return _select(
-        {
-            setting: empty if value is _UNSET else value
-            for setting, value in values.items()
-        }
-    )
-
-
-def _values(rules: Mapping[str, Rule], name: str) -> dict[str, Any]:
-    """Each variant's value of one attribute, by the variant's setting; _UNSET where absent."""
-    return {setting: rule.attrs.get(name, _UNSET) for setting, rule in rules.items()}
+        first = next(iter(rules.values()))
+        raise ValueError(
+            f"The runtime variants declare {first.name} with different {name}"
+        )
+    empty = _empty(values.values())
+    return _select({setting: values.get(setting, empty) for setting in rules})
 
 
 def _merged_rule(rules: Mapping[str, Rule]) -> Rule:
@@ -80,11 +68,19 @@ def _merged_rule(rules: Mapping[str, Rule]) -> Rule:
         )
     fixed = ALWAYS_FIXED.union(*(rule.fixed for rule in rules.values()))
     names = dict.fromkeys(name for rule in rules.values() for name in rule.attrs)
-    attrs = {
-        name: _attribute(first.name, name, _values(rules, name), name in fixed)
-        for name in names
-    }
+    attrs = {name: _attribute(rules, name, name in fixed) for name in names}
     return Rule(first.kind, first.name, attrs, first.fixed)
+
+
+def _by_name(
+    base: Sequence[Rule], variants: Mapping[str, Sequence[Rule]]
+) -> dict[str, dict[str, Rule]]:
+    """Each rule's declarations, by its name and then by the declaring variant's setting."""
+    declared: dict[str, dict[str, Rule]] = {}
+    for setting, rules in {DEFAULT: base, **variants}.items():
+        for rule in rules:
+            declared.setdefault(rule.name, {})[setting] = rule
+    return declared
 
 
 def merge(base: Sequence[Rule], variants: Mapping[str, Sequence[Rule]]) -> list[Rule]:
@@ -98,14 +94,19 @@ def merge(base: Sequence[Rule], variants: Mapping[str, Sequence[Rule]]) -> list[
     Returns:
         Each rule once, in the order the base and then the variants declare them.
     """
-    declared: dict[str, dict[str, Rule]] = {}
-    for setting, rules in {DEFAULT: base, **variants}.items():
-        for rule in rules:
-            declared.setdefault(rule.name, {})[setting] = rule
     return [
         next(iter(rules.values())) if _alike(rules.values()) else _merged_rule(rules)
-        for rules in declared.values()
+        for rules in _by_name(base, variants).values()
     ]
+
+
+def _presence(libraries: Mapping[str, Iterable[str]]) -> dict[str, tuple[str, ...]]:
+    """The variants that compile each library, by the library's name."""
+    presence: dict[str, list[str]] = {}
+    for variant, names in libraries.items():
+        for name in names:
+            presence.setdefault(name, []).append(variant)
+    return {name: tuple(variants) for name, variants in presence.items()}
 
 
 def presence_scopes(libraries: Mapping[str, Iterable[str]]) -> dict[str, str]:
@@ -118,17 +119,13 @@ def presence_scopes(libraries: Mapping[str, Iterable[str]]) -> dict[str, str]:
     Args:
         libraries: The names of the libraries each variant compiles, by variant.
     """
-    presence: dict[str, list[str]] = {}
-    for variant, names in libraries.items():
-        for name in names:
-            presence.setdefault(name, []).append(variant)
-    sets = sorted({tuple(variants) for variants in presence.values()})
+    presence = _presence(libraries)
     every = tuple(libraries)
     tags = {
         variants: "" if variants == every else f"p{index}__"
-        for index, variants in enumerate(sets)
+        for index, variants in enumerate(sorted(set(presence.values())))
     }
-    return {name: tags[tuple(variants)] for name, variants in presence.items()}
+    return {name: tags[variants] for name, variants in presence.items()}
 
 
 # ==== Unpinned variants =======================================================
@@ -145,6 +142,12 @@ def _relabeled(value: object, names: Mapping[str, str]) -> object:
             tuple((key, _relabeled(item, names)) for key, item in value.branches)
         )
     return value
+
+
+def _renamed(rule: Rule, names: Mapping[str, str]) -> Rule:
+    """A rule with its name and the labels it uses renamed by names."""
+    attrs = {key: _relabeled(value, names) for key, value in rule.attrs.items()}
+    return Rule(rule.kind, names.get(rule.name, rule.name), attrs, rule.fixed)
 
 
 def _stand_ins(target: str, pinned: str, errors: Mapping[str, str]) -> list[Rule]:
@@ -176,15 +179,7 @@ def unpinned_variants(
     if not errors:
         return list(rules)
     names = {target: "_pinned_" + target for target in targets}
-    result = [
-        Rule(
-            rule.kind,
-            names.get(rule.name, rule.name),
-            {key: _relabeled(value, names) for key, value in rule.attrs.items()},
-            rule.fixed,
-        )
-        for rule in rules
-    ]
+    result = [_renamed(rule, names) for rule in rules]
     for target in targets:
         result += _stand_ins(target, names[target], errors)
     return result

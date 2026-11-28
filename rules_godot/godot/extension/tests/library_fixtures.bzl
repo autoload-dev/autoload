@@ -83,22 +83,38 @@ _dynamic_xcframework_files = rule(
     attrs = {"binary": attr.string(mandatory = True)},
 )
 
-def dynamic_xcframework_fixture(name, binary, deps = [], linked = False):
-    """
-    Declare an import of a dynamic XCFramework of binary, by default bundle_only, as Godot loads it.
-
-    Args:
-        name: Name of the apple_dynamic_xcframework_import.
-        binary: The framework binary's name; the framework is <binary>.framework.
-        deps: The import's deps, such as the frameworks it loads or links.
-        linked: Whether code that depends on the import links the framework, as native
-            code links a vendor's SDK; otherwise the import is bundle_only.
-    """
+def _dynamic_xcframework_fixture_impl(name, visibility, binary, deps, linked):
     _dynamic_xcframework_files(name = name + "_files", binary = binary, tags = ["manual"])
     apple_dynamic_xcframework_import(
         name = name,
+        visibility = visibility,
         bundle_only = not linked,
         tags = ["manual"],
         xcframework_imports = [":" + name + "_files"],
         deps = deps,
     )
+
+dynamic_xcframework_fixture = macro(
+    doc = """
+    Declare an import of a dynamic XCFramework of binary, by default bundle_only, as Godot
+    loads it.
+    """,
+    implementation = _dynamic_xcframework_fixture_impl,
+    attrs = {
+        "binary": attr.string(
+            doc = "The framework binary's name; the framework is `<binary>.framework`.",
+            mandatory = True,
+            configurable = False,
+        ),
+        "deps": attr.label_list(
+            doc = "The import's deps, such as the frameworks it loads or links.",
+        ),
+        "linked": attr.bool(
+            doc = """
+            Whether code that depends on the import links the framework, as native code links
+            a vendor's SDK. Otherwise the import is bundle_only.
+            """,
+            configurable = False,
+        ),
+    },
+)
