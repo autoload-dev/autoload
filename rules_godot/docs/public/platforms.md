@@ -1135,5 +1135,23 @@ The SBOM reads the graph from analysis and builds none of the application's outp
 your package carry it too. The SBOM names `pkg:bazel/autoload_rules_godot` (MPL-2.0), and
 `pkg:generic/godot@<version>` and `pkg:generic/godot-cpp@<version>` (MIT), whose `checksum`
 names the archive they come from where rules_godot knows its digest. Each license names its
-text, such as the ruleset's `LICENSE`, so that a license report can include it. Godot is one
-package: the licenses of the libraries it bundles are not listed apart.
+text, such as the ruleset's `LICENSE`, so that a license report can include it.
+
+Godot bundles libraries under other licenses, such as zlib, FreeType and HarfBuzz, and lists
+them in the `COPYRIGHT.txt` of its sources. The SBOM names each library it lists as a package
+of its own, `pkg:generic/godot/<name>` with the name of its `Comment` field, with its license
+as an SPDX expression and its part of `COPYRIGHT.txt` as the license text. Godot 4.7.2 lists
+102 libraries. Godot's short names become SPDX identifiers: `Expat` is `MIT`, `HarfBuzz`
+`MIT-Modern-Variant`, `Unicode` `Unicode-DFS-2016`, `X11` `HPND-sell-variant`, and a license
+on no SPDX list, such as glslang's, is a `LicenseRef`. The packages have no version, since
+`COPYRIGHT.txt` names none.
+
+The list covers every library of `COPYRIGHT.txt`, also those a given build does not link,
+such as the Vulkan loader in a build without Vulkan, or the editor's own fonts in an
+exported application: it can name more than the application ships. A source-built engine
+reads `COPYRIGHT.txt` from its source archive, a fork's included. Its patches and custom
+modules do not change the list, so declare the package metadata of a library they add
+yourself. The prebuilt binaries of a catalogued version read the file of the release's
+commit, which rules_godot pins beside the archives. Binaries you pin with
+`godot_engines.binaries` name Godot alone, since rules_godot does not know the sources they
+were built from.

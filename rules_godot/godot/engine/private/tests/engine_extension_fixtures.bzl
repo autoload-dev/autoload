@@ -23,6 +23,9 @@ _RELEASE_SOURCE = "godot_source_e954996374cb"
 _RELEASE_TREE = "godot_tree_e954996374cb"
 _TAG_SOURCE = "godot_source_000000000000"
 
+# The repository of the libraries of the COPYRIGHT.txt the catalogue pins for 4.7.2.
+_RELEASE_PACKAGES = "godot_release_packages_cb1980c88089"
+
 _SOURCE = {
     "engine": "godot",
     "urls": ["file:///godot.tar.gz"],
@@ -149,6 +152,7 @@ extension = struct(
     ENGINE = _ENGINE,
     RELEASE_SOURCE = _RELEASE_SOURCE,
     RELEASE_TREE = _RELEASE_TREE,
+    RELEASE_PACKAGES = _RELEASE_PACKAGES,
     TAG_SOURCE = _TAG_SOURCE,
     SOURCE = _SOURCE,
     BINARIES = _BINARIES,

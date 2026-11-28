@@ -5,7 +5,7 @@ Sections: Editor archive, Template extraction, Templates archive, Repository rul
 """
 
 load("//godot/private:repository_templates.bzl", "fill_template", "starlark_list")
-load("//godot/private:supply_chain.bzl", "source_purl", "write_package_metadata")
+load("//godot/private:supply_chain.bzl", "BUNDLED_PACKAGES", "source_purl", "write_package_metadata")
 load("//godot/private:versions.bzl", "require_supported_godot_version")
 load("//godot/private/config:settings.bzl", "CPU_TABLE")
 
@@ -14,6 +14,10 @@ visibility(["//godot/..."])
 _VERSION_ATTR = attr.string(
     doc = "Canonical Godot version of the archive's payloads; checked for ruleset support, not read from the archive.",
     mandatory = True,
+)
+
+_BUNDLED_PACKAGES_ATTR = attr.label(
+    doc = "The `:bundled_packages` of the godot_bundled_packages repository of the version's COPYRIGHT.txt, which the payloads carry beside Godot; none without.",
 )
 
 # ==== Editor archive ==========================================================
@@ -28,6 +32,7 @@ _EDITOR_ARCHIVE_ATTRS = {
         mandatory = True,
     ),
     "version": _VERSION_ATTR,
+    "bundled_packages": _BUNDLED_PACKAGES_ATTR,
     "binary": attr.string(
         doc = "Path of the editor executable inside the archive.",
         mandatory = True,
@@ -62,11 +67,13 @@ def editor_archive_impl(ctx, *, _fail = fail):
     ctx.template("BUILD.bazel", ctx.attr._build_template, substitutions = {
         "{PREBUILT_BZL}": repr(str(ctx.attr._prebuilt_bzl)),
         "{BINARY}": repr(ctx.attr.binary),
+        "{BUNDLED_PACKAGES}": repr(BUNDLED_PACKAGES),
         "{DIGEST}": repr(ctx.attr.integrity),
     })
     write_package_metadata(
         ctx,
         source_purl("godot", ctx.attr.version, integrity = ctx.attr.integrity),
+        bundled_packages = ctx.attr.bundled_packages,
     )
 
     # The integrity-pinned archive determines the contents, so Bazel's repo contents
@@ -186,6 +193,7 @@ def _ios(ctx, _fail):
         fill_template(ctx, ctx.attr._ios_engine_template, {
             "{NAME}": repr(template_target("ios", "", variant)),
             "{XCFRAMEWORK}": _ios_engine(variant),
+            "{BUNDLED_PACKAGES}": repr(BUNDLED_PACKAGES),
             "{DEPS}": starlark_list(sorted(dependencies[variant]), indent = "    "),
         })
         for variant in ["debug", "release"]
@@ -284,6 +292,7 @@ def _runtimes(ctx, platform, cpu, binary):
             "{NAME}": repr(template_target(platform, cpu, variant)),
             "{CPU}": repr(cpu),
             "{BINARY}": repr(binary(variant, cpu)),
+            "{BUNDLED_PACKAGES}": repr(BUNDLED_PACKAGES),
             "{DATA}": _PLATFORMS[platform].runtime_data,
             "{PLATFORM}": repr(platform),
             "{VARIANT}": repr(variant),
@@ -329,6 +338,7 @@ def templates_archive_impl(ctx, *, _fail = fail):
     write_package_metadata(
         ctx,
         source_purl("godot", ctx.attr.version, integrity = ctx.attr.integrity),
+        bundled_packages = ctx.attr.bundled_packages,
     )
 
     # The integrity-pinned archive determines the contents, so Bazel's repo contents
@@ -345,6 +355,7 @@ _TEMPLATES_ARCHIVE_ATTRS = {
         mandatory = True,
     ),
     "version": _VERSION_ATTR,
+    "bundled_packages": _BUNDLED_PACKAGES_ATTR,
     "platform": attr.string(
         doc = "Godot platform whose templates the repository extracts: linux, macos or ios.",
         mandatory = True,

@@ -15,6 +15,10 @@ PrebuiltArtifactInfo = provider(
     fields = {"digest": "Subresource Integrity digest of the archive the payload came from."},
 )
 
+_BUNDLED_PACKAGES_ATTR = attr.label_list(
+    doc = "The targets that carry the package metadata of the libraries the archive's Godot bundles; they add no files.",
+)
+
 def _editor_impl(ctx):
     out = ctx.actions.declare_file(ctx.label.name)
     ctx.actions.symlink(output = out, target_file = ctx.file.binary, is_executable = True)
@@ -36,6 +40,7 @@ prebuilt_editor = rule(
         "binary": attr.label(mandatory = True, allow_single_file = True),
         "data": attr.label_list(allow_files = True),
         "digest": attr.string(doc = "Integrity digest of the editor archive."),
+        "bundled_packages": _BUNDLED_PACKAGES_ATTR,
     },
 )
 
@@ -81,5 +86,6 @@ prebuilt_runtime = rule(
         "version": attr.string(mandatory = True),
         "variant": attr.string(default = "release", values = ["debug", "release"]),
         "digest": attr.string(doc = "Integrity digest of the archive the template came from."),
+        "bundled_packages": _BUNDLED_PACKAGES_ATTR,
     },
 )

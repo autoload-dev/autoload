@@ -7,6 +7,7 @@ Sections: godot_engines, godot_android_toolchains.
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 load("//godot/engine/private:archives.bzl", "godot_editor_archive", "godot_export_templates_archive")
+load("//godot/engine/private:bundled_packages.bzl", "godot_bundled_packages")
 load("//godot/engine/private:extension_plan.bzl", "plan_engines")
 load("//godot/engine/private:hub.bzl", "engine_hub", "engine_toolchains")
 load(
@@ -189,6 +190,7 @@ _ENGINE_RULES = {
     "engine_hub": engine_hub,
     "engine_toolchains": engine_toolchains,
     "godot_android_shell": godot_android_shell,
+    "godot_bundled_packages": godot_bundled_packages,
     "godot_editor_archive": godot_editor_archive,
     "godot_engine_build": godot_engine_build,
     "godot_engine_source": godot_engine_source,

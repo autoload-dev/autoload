@@ -24,6 +24,7 @@ _recipes = extension.recipes
 _expect_one_error = extension.expect_one_error
 _RELEASE_SOURCE = extension.RELEASE_SOURCE
 _RELEASE_TREE = extension.RELEASE_TREE
+_RELEASE_PACKAGES = extension.RELEASE_PACKAGES
 _TAG_SOURCE = extension.TAG_SOURCE
 
 def _test_lacking_slots_build_from_the_release_sources(env):
@@ -233,6 +234,45 @@ def _test_engines_of_one_source_share_its_tree(env):
     env.expect.that_collection(recipes["godot_ios_arm64_simulator_template_release"]["patches"]).contains_exactly([])
     env.expect.that_collection(recipes["simulation_macos_arm64_editor"]["patches"]).contains_exactly(["//:fork.patch"])
 
+# The engines of a catalogued release's sources and its official binaries share one
+# repository of the libraries of the COPYRIGHT.txt the catalogue pins, which the recipes and
+# the binaries name.
+def _test_a_releases_engines_share_its_libraries(env):
+    declarations, errors = _plan([_module(
+        "consumer",
+        is_root = True,
+        engine = [_engine(default = True), _engine(name = "simulation")],
+        build = [_build(engine = "simulation")],
+    )])
+    env.expect.that_collection(errors).contains_exactly([])
+    packages = _rules(declarations, "godot_bundled_packages")
+    env.expect.that_collection([declaration.attrs["name"] for declaration in packages]).contains_exactly([_RELEASE_PACKAGES])
+    env.expect.that_str(packages[0].attrs["sha256"]).equals(
+        "cb1980c88089573bcacd7221d777c689bb8bbd778799f24c27fca0fe5f774d6d",
+    )
+    label = "@%s//:bundled_packages" % _RELEASE_PACKAGES
+    recipes = _recipes(declarations)
+    env.expect.that_str(recipes["godot_ios_arm64_simulator_template_release"]["bundled_packages"]).equals(label)
+    env.expect.that_str(recipes["simulation_macos_arm64_editor"]["bundled_packages"]).equals(label)
+    env.expect.that_str(_rules(declarations, "godot_editor_archive")[0].attrs["bundled_packages"]).equals(label)
+
+# Other sources take the libraries of their tree's COPYRIGHT.txt.
+def _test_a_forks_libraries_come_from_its_tree(env):
+    declarations, errors = _plan([_module(
+        "consumer",
+        is_root = True,
+        engine = [_engine(version = "4.7.3-rc1")],
+        source = [_source()],
+    )])
+    env.expect.that_collection(errors).contains_exactly([])
+    packages = _rules(declarations, "godot_bundled_packages")
+    env.expect.that_collection(packages).has_size(1)
+    tree = [declaration.attrs["name"] for declaration in _rules(declarations, "godot_engine_tree")][0]
+    env.expect.that_str(packages[0].attrs["tree"]).equals("@%s//:tree.json" % tree)
+    label = "@%s//:bundled_packages" % packages[0].attrs["name"]
+    for recipe in _recipes(declarations).values():
+        env.expect.that_str(recipe["bundled_packages"]).equals(label)
+
 def _test_engines_of_one_archive_share_its_mirrors(env):
     # Mirror URLs are no identity: the shared archive takes both engines' URLs.
     declarations, errors = _plan([_module(
@@ -329,6 +369,8 @@ def engine_source_recipes_test_suite(name):
             _test_editor_recipes_take_the_editor_policy,
             _test_source_tag_replaces_the_catalogue_sources,
             _test_engines_of_one_source_share_its_tree,
+            _test_a_releases_engines_share_its_libraries,
+            _test_a_forks_libraries_come_from_its_tree,
             _test_engines_of_one_archive_share_its_mirrors,
             _test_engines_of_one_archive_describe_it_alike,
             _test_runtime_profiles_reach_the_runtime_recipes_of_their_engine,

@@ -27,6 +27,7 @@ _CONFIGURE_ENVIRONMENT = [
 _ATTRS = {
     "name": "godot_linux_x86_64_template_release",
     "tree": _TREE,
+    "bundled_packages": "@@godot_bundled_packages_e95499637//:bundled_packages",
     "patches": [],
     "patch_strip": 1,
     "platform": "linux",
@@ -99,7 +100,10 @@ def _paths(path):
 def _build(*, execute = {}, path = None, environ = {}, files = {}, tree = None, **overrides):
     ctx = mocks.repository_ctx(
         attr = _ATTRS | overrides,
-        files = {str(_TREE): tree or _tree_json(), _LICENSE: "Copyright (c) Godot Engine contributors."} | files,
+        files = {
+            str(_TREE): tree or _tree_json(),
+            _LICENSE: "Copyright (c) Godot Engine contributors.",
+        } | files,
         execute = execute,
         path = _paths(path),
         environ = environ,
@@ -211,6 +215,16 @@ def _test_configure_command_carries_the_recipe(env):
         "_package_metadata/LICENSE",
         "_package_metadata/BUILD.bazel",
     ])
+
+# The recipe's engine carries the libraries of the tree's COPYRIGHT.txt, which their own
+# repository declares.
+def _test_a_recipe_names_its_trees_bundled_packages(env):
+    ctx, errors = _build()
+    env.expect.that_collection(errors).contains_exactly([])
+    build = [call.content for call in mocks.calls(ctx, "file") if call.path == "_package_metadata/BUILD.bazel"]
+    env.expect.that_str(build[0]).contains(
+        'srcs = ["@@godot_bundled_packages_e95499637//:bundled_packages"],',
+    )
 
 # A recipe holds its generated files and links the engine tree's sources hard: no recipe
 # extracts them again.
@@ -518,6 +532,7 @@ def engine_build_test_suite(name):
             _test_a_fixed_timeout_bounds_configure,
             _test_failed_configure_fails,
             _test_a_recipe_links_its_engine_tree,
+            _test_a_recipe_names_its_trees_bundled_packages,
             _test_a_failed_link_fails,
             _test_a_lock_file_renders_without_configuring_on_this_host,
             _test_pins_configure_where_godot_accepts_the_recipe,

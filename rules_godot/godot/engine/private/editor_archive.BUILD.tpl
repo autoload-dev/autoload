@@ -18,6 +18,7 @@ filegroup(
 prebuilt_editor(
     name = "editor",
     binary = {BINARY},
+    bundled_packages = [{BUNDLED_PACKAGES}],
     data = [":distribution"],
     digest = {DIGEST},
 )

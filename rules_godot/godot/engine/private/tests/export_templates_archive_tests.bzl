@@ -43,6 +43,7 @@ def _templates(*, platform, tree, **overrides):
             "archive": _ARCHIVE,
             "integrity": _INTEGRITY,
             "version": "4.7.2",
+            "bundled_packages": None,
             "platform": platform,
             "cpus": {"linux": _LINUX_CPUS, "macos": ["universal"], "ios": []}[platform],
             "_prebuilt_bzl": "@@//godot/engine/private:prebuilt.bzl",

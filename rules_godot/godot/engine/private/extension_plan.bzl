@@ -22,6 +22,7 @@ load(
     "recipe_declarations",
     "slot_name",
 )
+load("//godot/private:supply_chain.bzl", "LIBRARY_PACKAGES")
 load("//godot/private:versions.bzl", "godot_version_error")
 
 visibility(["//godot/..."])
@@ -46,6 +47,43 @@ def _pins(engine, binaries, release):
     """What an engine's binaries come from: its binaries tag, or None, and the catalogue's release, or None."""
     return struct(name = engine.name, binaries = binaries, release = release)
 
+def _release_packages(release):
+    """
+    The godot_bundled_packages declaration of the COPYRIGHT.txt the catalogue pins for a release.
+
+    The file's digest names the repository, so every engine of the release shares it.
+
+    Args:
+        release: The catalogue's release, or None.
+
+    Returns:
+        The declaration, or None for a release without a pinned COPYRIGHT.txt.
+    """
+    copyright = (release or {}).get("copyright")
+    if not copyright:
+        return None
+    return _declaration(
+        "godot_bundled_packages",
+        name = "godot_release_packages_" + copyright["sha256"][:12],
+        urls = copyright["urls"],
+        sha256 = copyright["sha256"],
+    )
+
+def _packages_label(declaration):
+    """The label of the libraries of a godot_bundled_packages declaration."""
+    return "@" + declaration.attrs["name"] + LIBRARY_PACKAGES
+
+def _catalogue_bundled_packages(pins):
+    """
+    The label of the libraries of an engine's catalogued binaries, or None.
+
+    Godot's official binaries come without its sources, so their repositories name the
+    libraries of the COPYRIGHT.txt the catalogue pins. Pinned binaries are a fork's and take
+    none.
+    """
+    packages = _release_packages(pins.release)
+    return _packages_label(packages) if packages else None
+
 def _pinned(pins, attribute):
     """A binaries tag's value, None without the tag."""
     return getattr(pins.binaries, attribute) if pins.binaries else None
@@ -62,6 +100,7 @@ def _editor(pins, editor_platform, _fail):
             integrity = release[editor_platform],
             binary = layout.binary.format(tag = release["tag"]),
             layout = layout,
+            bundled_packages = _catalogue_bundled_packages(pins),
         )
     binaries = pins.binaries
     if editor_platform not in binaries.editor_integrity:
@@ -74,6 +113,7 @@ def _editor(pins, editor_platform, _fail):
         integrity = binaries.editor_integrity[editor_platform],
         binary = binary,
         layout = layout,
+        bundled_packages = None,
     )
 
 def _editor_platforms(pins):
@@ -102,6 +142,7 @@ def _pinned_templates(pins, _fail):
         integrity = binaries.templates_integrity,
         macos_cpus = binaries.templates_macos_cpus or ["universal"],
         linux_cpus = binaries.templates_linux_cpus or TEMPLATE_CPUS["linux"],
+        bundled_packages = None,
     )
 
 def _templates(pins, _fail):
@@ -124,6 +165,7 @@ def _templates(pins, _fail):
         integrity = release["templates"],
         macos_cpus = release["macos_cpus"],
         linux_cpus = release.get("linux_cpus", TEMPLATE_CPUS["linux"]),
+        bundled_packages = _catalogue_bundled_packages(pins),
     )
 
 # The Android shell AARs of an engine's binaries: the variant each serves and the prefix of
@@ -151,9 +193,18 @@ def _android_shells(pins):
     for variant, pin in _SHELL_PINS:
         urls = _pinned(pins, pin + "_urls")
         if urls:
-            shells[variant] = struct(pin = pin, urls = urls, integrity = _pinned(pins, pin + "_integrity"))
+            shells[variant] = struct(
+                pin = pin,
+                urls = urls,
+                integrity = _pinned(pins, pin + "_integrity"),
+                bundled_packages = None,
+            )
         elif pin in release:
-            shells[variant] = struct(pin = pin, **release[pin])
+            shells[variant] = struct(
+                pin = pin,
+                bundled_packages = _catalogue_bundled_packages(pins),
+                **release[pin]
+            )
     return shells
 
 def _binaries_plan(engine, binaries, release, *, _fail = fail):
@@ -411,19 +462,43 @@ def _recipe_policies(declarations, build, editor_policy):
 
 def _source_repositories(source):
     """
-    Return the names of a source archive's repository and of its engine tree.
+    Return the names of a source archive's repository, its engine tree and its libraries.
 
-    The archive's digest names them, so engines of one source share both: the tree is the
-    archive's, and each recipe applies its engine's patches to copies of its own.
+    The archive's digest names them, so engines of one source share all three: the tree is
+    the archive's, and each recipe applies its engine's patches to copies of its own.
 
     Args:
         source: The godot_engine_source attributes of an engine's sources.
 
     Returns:
-        A tuple of the godot_engine_source and the godot_engine_tree repository names.
+        A struct of the godot_engine_source, godot_engine_tree and godot_bundled_packages
+        repository names.
     """
     digest = source["sha256"][:12]
-    return "godot_source_" + digest, "godot_tree_" + digest
+    return struct(archive = "godot_source_" + digest, tree = "godot_tree_" + digest)
+
+def _source_packages(source, tree):
+    """
+    Return the godot_bundled_packages declaration of a source archive's libraries.
+
+    The sources of a catalogued release take the repository of the COPYRIGHT.txt the
+    catalogue pins for it, which is the archive's own; other sources that of their tree.
+
+    Args:
+        source: The godot_engine_source attributes of an engine's sources.
+        tree: The label of the `:tree.json` of the archive's engine tree.
+
+    Returns:
+        A godot_bundled_packages declaration, which engines of one source share.
+    """
+    for release in RELEASES.values():
+        if release["source"]["sha256"] == source["sha256"] and "copyright" in release:
+            return _release_packages(release)
+    return _declaration(
+        "godot_bundled_packages",
+        name = "godot_tree_packages_" + source["sha256"][:12],
+        tree = tree,
+    )
 
 def _source_recipes(parts, source, covered, profiles = {}):
     """
@@ -452,12 +527,17 @@ def _source_recipes(parts, source, covered, profiles = {}):
     build = parts.get("build")
     rows = [row for row in ROWS if not (row.build_target == "editor" and slot_name(row) in covered)]
     rows_plan = plan_rows(engine.name, rows, version = source["version"])
-    archive, tree = _source_repositories(source)
+    repositories = _source_repositories(source)
+    tree = "@%s//:tree.json" % repositories.tree
+    packages = _source_packages(source, tree)
+
+    # Every recipe's engine carries the libraries of the sources' COPYRIGHT.txt.
     policy = _policy(engine, build)
+    policy["bundled_packages"] = _packages_label(packages)
     lock_file = engine.lock_file
     declarations = recipe_declarations(
         engine.name,
-        "@%s//:tree.json" % tree,
+        tree,
         rows_plan,
         policy,
         lock_file,
@@ -467,8 +547,13 @@ def _source_recipes(parts, source, covered, profiles = {}):
     source_slots, android, tuned = _tuned_slots(rows_plan, covered)
     return struct(
         declarations = [
-            _declaration("godot_engine_source", name = archive, **source),
-            _declaration("godot_engine_tree", name = tree, source = "@%s//:source.json" % archive),
+            _declaration("godot_engine_source", name = repositories.archive, **source),
+            _declaration(
+                "godot_engine_tree",
+                name = repositories.tree,
+                source = "@%s//:source.json" % repositories.archive,
+            ),
+            packages,
         ] + declarations,
         slots = source_slots,
         android = android,
@@ -518,6 +603,25 @@ def runtime_profiles(modules, read):
 
 # ==== Declarations ============================================================
 
+def _bundled_packages_of(part):
+    """The bundled_packages attribute of a binary's repository, where the catalogue pins its COPYRIGHT.txt."""
+    return {"bundled_packages": part.bundled_packages} if part.bundled_packages else {}
+
+def _copyright_declarations(release, parts):
+    """
+    Return the repository of the libraries the catalogue's COPYRIGHT.txt lists, where binary parts name it.
+
+    Args:
+        release: The catalogue's release of the engine's version, or None.
+        parts: The editors, templates and shells of the engine's binaries plan.
+
+    Returns:
+        The godot_bundled_packages declarations, none or one.
+    """
+    if not [part for part in parts if part.bundled_packages]:
+        return []
+    return [_release_packages(release)]
+
 # The file name of a downloaded export-template archive. The platform repositories
 # extract the file itself, so they name it rather than the archive repository's //file
 # target.
@@ -557,6 +661,7 @@ def _templates_declarations(engine, templates):
             version = engine.version,
             platform = platform,
             cpus = cpus,
+            **_bundled_packages_of(templates)
         )
         for platform, cpus in [("linux", templates.linux_cpus), ("macos", templates.macos_cpus), ("ios", [])]
     ]
@@ -570,6 +675,7 @@ def _editor_declarations(engine, editors):
             integrity = editor.integrity,
             binary = editor.binary,
             version = engine.version,
+            **_bundled_packages_of(editor)
         )
         for editor_platform, editor in editors.items()
     ]
@@ -599,6 +705,34 @@ def _shell_declarations(engine, shells):
         ))
         android_runtimes[variant] = {"shell": "@%s//file" % name}
     return declarations, android_runtimes
+
+def _binary_declarations(engine, release, plan):
+    """
+    Return the repositories of an engine's binaries and what its hub takes of them.
+
+    Args:
+        engine: The godot_engines.engine tag.
+        release: The catalogue's release of the engine's version, or None.
+        plan: The result of _binaries_plan.
+
+    Returns:
+        A struct of the declarations, the hub's Android runtimes by variant and the hub's
+        attributes for them: the libraries of catalogued shells.
+    """
+    shells, android_runtimes = _shell_declarations(engine, plan.android_shells)
+    templates = [plan.templates] if plan.templates else []
+    parts = plan.editors.values() + templates + plan.android_shells.values()
+    declarations = _copyright_declarations(release, parts)
+    declarations += _editor_declarations(engine, plan.editors)
+    declarations += _templates_declarations(engine, plan.templates) + shells
+
+    # The hub's Android runtimes wrap the shells, so they carry the shells' libraries.
+    bundled = [shell.bundled_packages for shell in plan.android_shells.values() if shell.bundled_packages]
+    return struct(
+        declarations = declarations,
+        android_runtimes = android_runtimes,
+        hub = {"bundled_packages": bundled[0]} if bundled else {},
+    )
 
 def _acquisition_error(engine, source, plan):
     """The error of an engine that has no editor, or a lock file but no sources; None otherwise."""
@@ -640,9 +774,10 @@ def _engine_declarations(selection, profiles, _fail):
     error = _acquisition_error(engine, source, plan)
     if error:
         return _fail(error)
-    shells, android_runtimes = _shell_declarations(engine, plan.android_shells)
+    binaries = _binary_declarations(engine, release, plan)
+    declarations = binaries.declarations
+    android_runtimes = binaries.android_runtimes
     slots = _binary_slots(engine, plan)
-    declarations = _editor_declarations(engine, plan.editors) + _templates_declarations(engine, plan.templates) + shells
     hub = dict(
         name = engine.name,
         display_name = engine.name,
@@ -650,6 +785,7 @@ def _engine_declarations(selection, profiles, _fail):
         default_engine = selection.default,
         toolchains_repository = TOOLCHAINS_REPOSITORY,
         version = engine.version,
+        **binaries.hub
     )
     if source:
         covered = {slot["name"]: True for slot in slots} | {"android_" + variant: True for variant in plan.android_shells}
@@ -688,7 +824,7 @@ def _profile_error(modules, selections):
     return errors[0] if errors else None
 
 # The repositories engines of one source archive share.
-_SHARED_RULES = ["godot_engine_source", "godot_engine_tree"]
+_SHARED_RULES = ["godot_bundled_packages", "godot_engine_source", "godot_engine_tree"]
 
 def _same_archive(first, other):
     """
@@ -705,6 +841,15 @@ def _same_archive(first, other):
         return True
     return first == other
 
+def _shared_error(declaration):
+    """The error of a shared repository that engines declare differently."""
+    if declaration.rule == "godot_bundled_packages":
+        return "Godot engines declare the libraries' repository %s differently" % declaration.attrs["name"]
+    return (
+        "Godot engines declare the source archive of %s with different " +
+        "strip_prefix or version; declare it alike in every engine"
+    ) % declaration.attrs["name"]
+
 def _shared_once(declarations, _fail):
     """
     Declare each shared repository once, for every engine of its archive; None after an error.
@@ -718,10 +863,7 @@ def _shared_once(declarations, _fail):
         name = declaration.attrs["name"]
         if declaration.rule in _SHARED_RULES and name in seen:
             if not _same_archive(seen[name], declaration):
-                return _fail((
-                    "Godot engines declare the source archive of %s with different " +
-                    "strip_prefix or version; declare it alike in every engine"
-                ) % name)
+                return _fail(_shared_error(declaration))
             continue
         seen[name] = declaration
         result.append(declaration)

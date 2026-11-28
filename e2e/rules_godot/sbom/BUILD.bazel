@@ -54,7 +54,8 @@ spdx(
 )
 
 # Build-output test: the SBOM of a desktop application names the rules, the engine whose
-# runtime it ships and the godot-cpp its extension links, each with its license.
+# runtime it ships, the libraries the engine's COPYRIGHT.txt lists and the godot-cpp its
+# extension links, each with its license.
 spdx_packages_test(
     name = "app_sbom_names_engine_and_godot_cpp_test",
     size = "small",
@@ -62,6 +63,12 @@ spdx_packages_test(
         "pkg:bazel/autoload_rules_godot": "MPL-2.0",
         "pkg:generic/godot": "MIT",
         "pkg:generic/godot-cpp": "MIT",
+        # Libraries of Godot's thirdparty/ and modules: a single license, a choice of
+        # licenses, a license on no SPDX list, and code under two licenses at once.
+        "pkg:generic/godot/zlib": "Zlib",
+        "pkg:generic/godot/SPIRV-Cross": "Apache-2.0 OR MIT",
+        "pkg:generic/godot/glslang": "LicenseRef-glslang",
+        "pkg:generic/godot/Bullet%20Continuous%20Collision%20Detection%20and%20Physics%20Library": "MIT AND Zlib",
     },
     spdx = ":app_spdx",
 )
