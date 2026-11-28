@@ -67,6 +67,14 @@ class ClassFragmentTest(unittest.TestCase):
         header = script_header('"@"\nicon("res://i.svg")\n')
         self.assertEqual("", header["icon"])
 
+    def test_a_nested_class_is_no_inner_class_of_the_script(self) -> None:
+        header = script_header(
+            "class A:\n\tclass B extends Node2D:\n\t\tpass\nclass B extends Node3D:\n\tpass\n"
+        )
+        self.assertEqual(
+            {"A": None, "B": {"path": None, "names": ["Node3D"]}}, header["inner"]
+        )
+
     def test_a_string_names_no_inner_class(self) -> None:
         header = script_header('class_name C\nfunc f(s):\n\tif "class" in s:\n\t\tpass\n')
         self.assertEqual({}, header["inner"])

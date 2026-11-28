@@ -168,8 +168,8 @@ def _is_path_name(token: Token) -> bool:
 
 # The keywords after which an expression starts, so that a `%` after them starts a path.
 _EXPRESSION_KEYWORDS = frozenset(
-    ("and", "as", "await", "elif", "else", "if", "in", "is", "match", "not", "or")
-    + ("return", "when", "while")
+    ("and", "await", "elif", "else", "if", "in", "is", "match", "not", "or", "return")
+    + ("when", "while")
 )
 
 
@@ -190,11 +190,8 @@ def _starts_path(before: Token | None, separator: Token) -> bool:
     """
     if not is_punctuation(separator, "%"):
         return False
-    # A statement on a new line may start with a path. A `%` after a line break inside
-    # brackets is taken for one too, which keeps the body.
-    if before is None or before.line != separator.line:
-        return True
-    return not _ends_operand(before)
+    # A `%` that starts a statement starts a path.
+    return before is None or not _ends_operand(before)
 
 
 def _follows_path_name(body: list[Token], separator: int) -> bool:
@@ -235,11 +232,12 @@ def _names_node_or_member(body: list[Token], position: int) -> bool:
     return _is_path_separator(before) and _in_node_path(body, position - 1)
 
 
-def _names_await(body: list[Token]) -> bool:
-    """Whether `await` stands in the body as part of a node path or member access."""
+def _names_await(statement: list[Token]) -> bool:
+    """Whether `await` stands in a logical line as part of a node path or member access."""
     return any(
-        is_identifier(body[position], "await") and _names_node_or_member(body, position)
-        for position in range(1, len(body))
+        is_identifier(statement[position], "await")
+        and _names_node_or_member(statement, position)
+        for position in range(1, len(statement))
     )
 
 
@@ -258,21 +256,37 @@ def _return_type(signature: list[Token]) -> list[str] | None:
     return [token.value for token in signature[after + 2 : -1]]
 
 
-def _stub(signature: list[Token], body: list[Token]) -> str | None:
+def _awaits(statements: list[list[Token]]) -> bool | None:
     """
-    The statement that replaces a function body, or None to keep the body.
-
-    Args:
-        signature: The tokens from `func` to the colon before the body, both included.
-        body: The tokens of the body.
+    Whether a function body awaits, which makes the function a coroutine; None if that is
+    undecided, so the body stays.
     """
-    identifiers = {token.value for token in body if token.category == "identifier"}
+    identifiers = {
+        token.value
+        for statement in statements
+        for token in statement
+        if token.category == "identifier"
+    }
     awaits = "await" in identifiers
     # An await in a lambda makes the lambda a coroutine, not the function. Telling
     # where the lambda ends would take a parser.
     if awaits and "func" in identifiers:
         return None
-    if _names_await(body):
+    if any(_names_await(statement) for statement in statements):
+        return None
+    return awaits
+
+
+def _stub(signature: list[Token], statements: list[list[Token]]) -> str | None:
+    """
+    The statement that replaces a function body, or None to keep the body.
+
+    Args:
+        signature: The tokens from `func` to the colon before the body, both included.
+        statements: The logical lines of the body.
+    """
+    awaits = _awaits(statements)
+    if awaits is None:
         return None
     returns = _return_type(signature)
     if returns is None or returns == ["void"]:
@@ -324,12 +338,12 @@ def _function_body(
     Yields:
         The body's start and end offsets and its stub, or nothing.
     """
-    body = rest + [token for line in block for token in line]
-    if not body:
+    statements = [rest, *block] if rest else block
+    if not statements:
         return
-    statement = _stub(signature, body)
-    if statement is not None:
-        yield signature[-1].end, body[-1].end, statement
+    stub = _stub(signature, statements)
+    if stub is not None:
+        yield signature[-1].end, statements[-1][-1].end, stub
 
 
 def _function_bodies(

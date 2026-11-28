@@ -240,6 +240,12 @@ class ScriptInterfaceTest(unittest.TestCase):
             'func f() -> float: return await Engine.get_meta(&"")\n',
             _stubs("func f() -> float:\n\treturn (x\n\t\t/ await g())\n"),
         )
+        for body in ['"""a\nb""" % await g()', "(x\n\t\t% await g())"]:
+            with self.subTest(body):
+                self.assertEqual(
+                    'func f() -> String: return await Engine.get_meta(&"")\n',
+                    _stubs(f"func f() -> String:\n\treturn {body}\n"),
+                )
         self.assertEqual(
             'func f(): await Engine.get_meta(&"")\n',
             _stubs("func f():\n\tprint({1: 2} % await g())\n"),

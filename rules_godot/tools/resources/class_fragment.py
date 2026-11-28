@@ -16,7 +16,13 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from tools.inputs.mapped_paths import add_root_arguments, resolve_paths, resolver
-from tools.resources.text import closes_arguments, is_identifier, is_punctuation, tokens
+from tools.resources.text import (
+    Token,
+    closes_arguments,
+    is_identifier,
+    is_punctuation,
+    lex,
+)
 
 CACHE = ".godot/global_script_class_cache.cfg"
 
@@ -108,7 +114,7 @@ def _script_class(script: list, header: dict) -> int:
     abstract = False
     index = 0
     while index < len(script):
-        category, value, _ = script[index]
+        category, value = script[index][:2]
         if is_punctuation(script[index], "@") and index + 1 < len(script):
             annotation, icon, index = _annotation(script, index + 1)
             if icon is not None:
@@ -126,14 +132,26 @@ def _script_class(script: list, header: dict) -> int:
     return index
 
 
-def _inner_bases(script: list, index: int) -> dict[str, Base | None]:
+def _unindented(text: str, token: Token) -> bool:
+    """Whether the token's line starts without indentation, as the script's own members do."""
+    line_start = text.rfind("\n", 0, token.start) + 1
+    return not text[line_start : line_start + 1].isspace()
+
+
+def _declares_inner_class(text: str, script: list[Token], position: int) -> bool:
+    """Whether script[position] declares an inner class of the script, not a nested one."""
+    return (
+        is_identifier(script[position], "class")
+        and script[position + 1].category == "identifier"
+        and _unindented(text, script[position])
+    )
+
+
+def _inner_bases(text: str, script: list[Token], index: int) -> dict[str, Base | None]:
     """The bases of the inner classes declared from script[index] on, by class name."""
     inner = {}
     for position in range(index, len(script) - 2):
-        if (
-            is_identifier(script[position], "class")
-            and script[position + 1][0] == "identifier"
-        ):
+        if _declares_inner_class(text, script, position):
             # The extends may also stand on the class's next line, after its colon.
             extends = position + 2
             if is_punctuation(script[extends], ":"):
@@ -156,7 +174,7 @@ def script_header(text: str) -> dict:
         A dict of class (the class_name or empty), base (Base, or None without extends),
         is_tool, is_abstract, icon and inner, the bases of the inner classes by name.
     """
-    script = [token for token in tokens(text) if token[0] != "newline"]
+    script = [token for token in lex(text) if token.category != "newline"]
     header = {
         "class": "",
         "base": None,
@@ -165,7 +183,7 @@ def script_header(text: str) -> dict:
         "icon": "",
         "inner": {},
     }
-    header["inner"] = _inner_bases(script, _script_class(script, header))
+    header["inner"] = _inner_bases(text, script, _script_class(script, header))
     return header
 
 
