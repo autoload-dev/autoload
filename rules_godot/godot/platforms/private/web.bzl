@@ -83,18 +83,25 @@ def _extension_libraries(ctx, pack, runtime):
     Godot's export places every one at the page's directory under its own name.
     """
     libraries = {}
+    runtime_version = getattr(runtime, "emscripten_version", None)
     for extension in pack.project.runtime_extensions:
         library = extension.library
         toolchain_id = getattr(library, "toolchain_id", "")
         version = toolchain_id.removeprefix("emscripten-")
-        if toolchain_id.startswith("emscripten-") and version != runtime.emscripten_version:
+        if toolchain_id.startswith("emscripten-") and not runtime_version:
+            fail("%s: the runtime of Godot %s names no Emscripten version, so the extension %s cannot be checked against it." % (
+                ctx.label,
+                runtime.version,
+                extension.label,
+            ))
+        if toolchain_id.startswith("emscripten-") and version != runtime_version:
             fail("%s: the extension %s is built with Emscripten %s, but the runtime of Godot %s for %s with %s." % (
                 ctx.label,
                 extension.label,
                 version,
                 runtime.version,
                 ctx.attr._export_platform[BuildSettingInfo].value.rpartition(":")[2] or "the web",
-                runtime.emscripten_version,
+                runtime_version,
             ))
         name = library.file.basename
         if name in libraries:

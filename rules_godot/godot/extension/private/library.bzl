@@ -56,7 +56,7 @@ def _dynamic_file(library):
     """The shared library a library to link loads, under its own name."""
     return library.resolved_symlink_dynamic_library or library.dynamic_library
 
-def _is_shared_library(file, suffixes = ["so", "dylib", "wasm"], versioned = True):
+def _is_shared_library(file, suffixes = ["so", "dylib"], versioned = True):
     return file.extension in suffixes or (versioned and "so" in suffixes and ".so." in file.basename)
 
 def _framework_binary(directory, files):
@@ -113,8 +113,14 @@ def _linked_library(target, linked):
     return None
 
 def _shared_file_library(target):
-    """Return the one shared library among the target's files, as cc_binary(linkshared) has it, or None."""
-    files = [file for file in target[DefaultInfo].files.to_list() if _is_shared_library(file)]
+    """
+    Return the one shared library among the target's files, as cc_binary(linkshared) has it, or None.
+
+    A side module (.wasm) counts only where the target has no native shared library, so a
+    WebAssembly data file beside a .so leaves the native library's classification alone.
+    """
+    files = target[DefaultInfo].files.to_list()
+    files = [file for file in files if _is_shared_library(file)] or [file for file in files if file.extension == "wasm"]
     if len(files) != 1:
         return None
     return struct(link_kind = "dynamic", file = files[0], cc_info = None, linker_inputs = None)

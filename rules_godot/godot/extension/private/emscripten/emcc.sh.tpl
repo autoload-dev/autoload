@@ -5,4 +5,7 @@
 set -euo pipefail
 export EMSDK_ROOT="{SDK_ROOT}"
 export EM_CONFIG="$EMSDK_ROOT/emscripten_config"
+# The SDK is a read-only input: no bytecode beside its sources, no sanity file in its cache.
+export PYTHONDONTWRITEBYTECODE=1
+export EMCC_SKIP_SANITY_CHECK=1
 exec "$EMSDK_PYTHON" "$EMSDK_ROOT/emscripten/{TOOL}.py" "$@"
