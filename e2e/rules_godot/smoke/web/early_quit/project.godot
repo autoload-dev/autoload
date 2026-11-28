@@ -1,0 +1,9 @@
+; A web application that quits in its first frames, with Godot's default audio driver: the
+; quit closes the audio context while the audio worklet still starts.
+
+config_version=5
+
+[application]
+
+config/name="Web Early Quit"
+run/main_scene="res://main/main.tscn"

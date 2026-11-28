@@ -69,6 +69,11 @@ godot_app(
     application_id = "org.example.rulesgodot.lichtpost",
     build_profile = "runtime.gdbuild",
     pack = ":pack",
+    # The runtime built with runtime.gdbuild is desktop-only; the web has none.
+    target_compatible_with = select({
+        "@autoload_rules_godot//godot/platforms:is_web": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
 )
 
 godot_project(
