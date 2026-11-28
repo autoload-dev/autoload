@@ -11,7 +11,7 @@ Sections: Script tokens, Scan, Reference scanning, Reference targets, Single fil
 
 import json
 from collections import Counter, defaultdict
-from collections.abc import Container, Iterator, Mapping
+from collections.abc import Iterator, Mapping
 from itertools import pairwise
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -24,6 +24,8 @@ from tools.resources.text import (
     Heading,
     file_identities,
     headings,
+    is_identifier,
+    is_punctuation,
     res_path,
     tokens,
 )
@@ -45,19 +47,16 @@ def _at(script: list, i: int) -> tuple[str, str, int]:
 
 
 def _literal_argument(
-    script: list,
-    paren: int,
-    closers: Container[str] = (")", ","),
-    constants: Mapping[str, str] | None = None,
+    script: list, paren: int, constants: Mapping[str, str] | None = None
 ) -> str | None:
     """
     The first argument of the call opened at script[paren], if it is a lone string literal or
     a constant of the script whose value is one.
     """
-    if _at(script, paren)[1] != "(":
+    if not is_punctuation(_at(script, paren), "("):
         return None
     argument, closer = _at(script, paren + 1), _at(script, paren + 2)
-    if closer[1] not in closers:
+    if not (is_punctuation(closer, ")") or is_punctuation(closer, ",")):
         return None
     if argument[0] == "identifier":
         return (constants or {}).get(argument[1])
@@ -77,7 +76,7 @@ def _literal_value(script: list, assign: int) -> str | None:
 def _literal_constant(script: list, i: int) -> tuple[str, str] | None:
     """The name and value of a constant declared at script[i] whose value is a literal."""
     name = _at(script, i + 1)
-    if script[i][1] != "const" or name[0] != "identifier":
+    if not is_identifier(script[i], "const") or name[0] != "identifier":
         return None
     assign = next((j for j in range(i + 2, i + 5) if _at(script, j)[1] == "="), None)
     value = None if assign is None else _literal_value(script, assign)
@@ -92,7 +91,9 @@ def _literal_constants(script: list) -> dict[str, str]:
     declared = Counter(
         name[1]
         for keyword, name in pairwise(script)
-        if keyword[1] in ("const", "var") and name[0] == "identifier"
+        if keyword[0] == "identifier"
+        and keyword[1] in ("const", "var")
+        and name[0] == "identifier"
     )
     found = (_literal_constant(script, i) for i in range(len(script)))
     return {name: value for name, value in filter(None, found) if declared[name] == 1}
@@ -300,9 +301,7 @@ def _icon_annotation(scan: Scan, path: str, script: list, i: int) -> bool:
     _, name, line = script[i]
     if name != "icon" or _at(script, i - 1)[1] != "@":
         return False
-    icon = _literal_argument(
-        script, i + 1, closers=(")",), constants=scan.constants.get(path)
-    )
+    icon = _literal_argument(script, i + 1, constants=scan.constants.get(path))
     if icon is None:
         return False
     scan.reference(path, icon, "script_icon", line)
@@ -509,8 +508,8 @@ class _AnySource:
 
 def _extended_class(script: list) -> str | None:
     """The global class the script itself extends by name, not one of its inner classes."""
-    for i, (_, value, _) in enumerate(script):
-        if value == "extends" and _at(script, i - 2)[1] != "class":
+    for i, token in enumerate(script):
+        if is_identifier(token, "extends") and _at(script, i - 2)[1] != "class":
             base = _at(script, i + 1)
             return base[1] if base[0] == "identifier" else None
     return None

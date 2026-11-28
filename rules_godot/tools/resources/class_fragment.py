@@ -16,7 +16,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from tools.inputs.mapped_paths import add_root_arguments, resolve_paths, resolver
-from tools.resources.text import is_punctuation, tokens
+from tools.resources.text import is_identifier, is_punctuation, tokens
 
 CACHE = ".godot/global_script_class_cache.cfg"
 
@@ -134,9 +134,12 @@ def _inner_bases(script: list, index: int) -> dict[str, Base | None]:
     """The bases of the inner classes declared from script[index] on, by class name."""
     inner = {}
     for position in range(index, len(script) - 2):
-        if script[position][1] == "class" and script[position + 1][0] == "identifier":
+        if (
+            is_identifier(script[position], "class")
+            and script[position + 1][0] == "identifier"
+        ):
             base = None
-            if script[position + 2][1] == "extends":
+            if is_identifier(script[position + 2], "extends"):
                 base, _ = _base(script, position + 3)
             inner.setdefault(script[position + 1][1], base)
     return inner

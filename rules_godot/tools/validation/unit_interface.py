@@ -50,6 +50,7 @@ from tools.resources.text import (
     IMPORTER,
     REMAP_PATH,
     Token,
+    is_identifier,
     is_punctuation,
     lex,
     remap_section,
@@ -85,10 +86,6 @@ _IGNORE_BODY_WARNINGS = (
     + ", ".join(f'"{warning}"' for warning in _BODY_WARNINGS)
     + ")\n"
 )
-
-# The tokens after which an identifier is part of a node path or member access, not a
-# keyword.
-_PATH_PUNCTUATION = ("$", "%", "/", ".")
 
 
 def _nesting(token: Token) -> int:
@@ -162,10 +159,20 @@ def _block_colon(line: list[Token], index: int) -> int | None:
     return None
 
 
+def _names_node_or_member(before: Token, name: Token) -> bool:
+    """Whether the identifier after the punctuation `before` is part of a node path or member."""
+    if before.category != "punctuation":
+        return False
+    if before.value in ("$", "."):
+        return True
+    # `%` and `/` are also operators. In a node path, no blank separates them from the name.
+    return before.value in ("%", "/") and before.end == name.start
+
+
 def _names_await(body: list[Token]) -> bool:
     """Whether `await` stands in the body as part of a node path or member access."""
     return any(
-        before.value in _PATH_PUNCTUATION and token.value == "await"
+        is_identifier(token, "await") and _names_node_or_member(before, token)
         for before, token in pairwise(body)
     )
 
@@ -292,7 +299,7 @@ def script_interface(source: str) -> str:
     """
     tokens = lex(source)
     # A restored warning would report again in the stubs below it.
-    if any(token.value == "warning_ignore_restore" for token in tokens):
+    if any(is_identifier(token, "warning_ignore_restore") for token in tokens):
         return source
     spans = list(_function_bodies(source, _logical_lines(tokens)))
     if not spans:

@@ -220,6 +220,18 @@ class ScriptInterfaceTest(unittest.TestCase):
             _stubs('@warning_ignore("(") func f():\n\tprint(1)\n'),
         )
 
+    def test_an_operator_before_await_names_no_node(self) -> None:
+        self.assertEqual(
+            'func f() -> String: return await Engine.get_meta(&"")\n',
+            _stubs('func f() -> String:\n\treturn "%d" % await g()\n'),
+        )
+
+    def test_a_string_restores_no_warning(self) -> None:
+        self.assertEqual(
+            "func f(): pass\n",
+            _stubs('func f():\n\tprint("warning_ignore_restore")\n'),
+        )
+
     def test_a_script_without_bodies_stays(self) -> None:
         source = "extends Node\nsignal done\nconst X = 1\n"
         self.assertEqual(source, script_interface(source))

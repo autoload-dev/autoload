@@ -240,6 +240,11 @@ def is_punctuation(token: tuple, value: str) -> bool:
     return token[:2] == ("punctuation", value)
 
 
+def is_identifier(token: tuple, value: str) -> bool:
+    """Whether a token from lex or tokens is the identifier or keyword `value`, not a string."""
+    return token[:2] == ("identifier", value)
+
+
 # ==== Text resources ==========================================================
 
 

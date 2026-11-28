@@ -58,6 +58,10 @@ class ClassFragmentTest(unittest.TestCase):
         )
         self.assertEqual({"Inner": {"path": None, "names": ["Node"]}}, header["inner"])
 
+    def test_a_string_names_no_inner_class(self) -> None:
+        header = script_header('class_name C\nfunc f(s):\n\tif "class" in s:\n\t\tpass\n')
+        self.assertEqual({}, header["inner"])
+
     def test_an_icon_may_end_in_a_comma(self) -> None:
         header = script_header('@icon(\n\t"res://i.svg",\n)\nclass_name C\n')
         self.assertEqual("res://i.svg", header["icon"])
