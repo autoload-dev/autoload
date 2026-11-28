@@ -233,9 +233,9 @@ def tokens(text: str, *, shader: bool = False) -> list[tuple[str, str, int]]:
 
 def is_punctuation(token: tuple, value: str) -> bool:
     """
-    Whether a token from lex or tokens is the punctuation value.
+    Whether a token from lex or tokens is the punctuation `value`, not a string.
 
-    A string token holds its decoded text, so its value alone may look like punctuation.
+    A string token holds its decoded text, so the string `"("` has the value `(`.
     """
     return token[:2] == ("punctuation", value)
 

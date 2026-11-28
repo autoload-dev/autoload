@@ -25,7 +25,8 @@ CACHE = ".godot/global_script_class_cache.cfg"
 Base = dict
 
 
-# How each bracket changes the nesting of arguments.
+# How each bracket changes the nesting of arguments. Only punctuation counts, not a string
+# with the same text.
 _NESTING = {"(": 1, ")": -1}
 
 
@@ -67,10 +68,10 @@ def _base(script: list, index: int) -> tuple[Base, int]:
 
 def _icon(script: list, index: int) -> str | None:
     """
-    The path that the arguments opening at script[index] give an @icon, or None.
+    The path of the @icon whose arguments open at script[index], or None.
 
-    Godot's scan records an icon only for one string argument whose `)` closes it, not
-    for arguments that the file cuts off.
+    Godot's editor scan records an icon only for a single string argument that a `)`
+    closes. It records none for `@icon(`, an unclosed `@icon("x"` or two arguments.
     """
     match script[index + 1 : index + 3]:
         case [("string", path, *_), closing] if is_punctuation(closing, ")"):

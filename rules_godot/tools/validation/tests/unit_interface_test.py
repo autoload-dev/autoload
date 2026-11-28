@@ -159,7 +159,7 @@ compress/mode=0
 
 
 def _stubs(source: str) -> str:
-    """The script interface of source without its first line, which ignores the warnings."""
+    """The script interface of source without its first line, @warning_ignore_start."""
     return script_interface(source).split("\n", 1)[1]
 
 
@@ -208,7 +208,7 @@ class ScriptInterfaceTest(unittest.TestCase):
             _stubs("func g(cb := func() -> int: return 1) -> int:\n\treturn cb.call()\n"),
         )
 
-    def test_a_backslash_string_continues_no_line(self) -> None:
+    def test_a_string_ending_in_a_backslash_joins_no_line(self) -> None:
         self.assertEqual(
             'const SEP = "\\\\"\nfunc f() -> int: return Engine.get_meta(&"")\n',
             _stubs('const SEP = "\\\\"\nfunc f() -> int:\n\treturn 1\n'),

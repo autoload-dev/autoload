@@ -58,8 +58,8 @@ class ClassFragmentTest(unittest.TestCase):
         )
         self.assertEqual({"Inner": {"path": None, "names": ["Node"]}}, header["inner"])
 
-    def test_an_icon_other_than_one_string_records_none(self) -> None:
-        # What Godot 4.7's editor scan records for these: the class, without an icon.
+    def test_an_icon_without_a_single_closed_string_records_none(self) -> None:
+        # Godot 4.7's editor scan records the class and no icon for these.
         for icon in [
             "@icon(",
             '@icon("res://i.svg"',

@@ -104,7 +104,8 @@ def _continues(line: list[Token], depth: int) -> bool:
     """
     Whether a newline after these tokens continues the logical line.
 
-    It does inside brackets and after a backslash, but not after a string that ends in one.
+    It does inside brackets and after a backslash. A string whose text ends in a backslash
+    does not count.
     """
     if depth:
         return True
