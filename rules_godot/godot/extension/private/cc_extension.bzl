@@ -68,7 +68,7 @@ def _cc_extension_impl(
             # report the extension as missing.
             library = select({
                 Label("@platforms//os:" + operating_system): ":" + library
-                for operating_system in ["android", "ios", "linux", "macos"]
+                for operating_system in ["android", "emscripten", "ios", "linux", "macos"]
             } | {"//conditions:default": None}),
             data = data,
             resource_path = resource_path,

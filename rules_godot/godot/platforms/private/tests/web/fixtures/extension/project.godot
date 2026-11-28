@@ -1,0 +1,8 @@
+; A web application whose pack carries a C ABI extension.
+
+config_version=5
+
+[application]
+
+config/name="Web Extension"
+run/main_scene="res://main.tscn"

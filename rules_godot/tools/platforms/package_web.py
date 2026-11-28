@@ -20,7 +20,7 @@ import hashlib
 import json
 import shutil
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -71,14 +71,17 @@ def is_pwa(facts: Facts) -> bool:
     return bool(facts.option("progressive_web_app/enabled"))
 
 
-def page_config(facts: Facts, file_sizes: Mapping[str, int]) -> dict[str, Any]:
+def page_config(
+    facts: Facts, file_sizes: Mapping[str, int], libraries: Sequence[str] = ()
+) -> dict[str, Any]:
     """Return the Engine configuration _fix_html writes into the page."""
     worker = {"serviceWorker": f"{NAME}.service.worker.js"} if is_pwa(facts) else {}
     return worker | {
         "canvasResizePolicy": facts.option("html/canvas_resize_policy"),
         "experimentalVK": facts.option("html/experimental_virtual_keyboard"),
         "focusCanvas": facts.option("html/focus_canvas_on_start"),
-        "gdextensionLibs": [],
+        # The extensions' side modules, which load from beside the page.
+        "gdextensionLibs": list(libraries),
         "executable": NAME,
         # An export without debug flags passes the engine no arguments.
         "args": [],
@@ -117,7 +120,9 @@ def _splash_classes(facts: Facts) -> str:
     )
 
 
-def page(shell: str, facts: Facts, file_sizes: Mapping[str, int]) -> str:
+def page(
+    shell: str, facts: Facts, file_sizes: Mapping[str, int], libraries: Sequence[str] = ()
+) -> str:
     """
     Return the HTML shell with its placeholders filled, as _fix_html fills them.
 
@@ -129,7 +134,7 @@ def page(shell: str, facts: Facts, file_sizes: Mapping[str, int]) -> str:
         "$GODOT_URL": NAME + ".js",
         "$GODOT_PROJECT_NAME": str(facts.setting("application/config/name") or ""),
         "$GODOT_HEAD_INCLUDE": _head_include(facts),
-        "$GODOT_CONFIG": godot_json(page_config(facts, file_sizes)),
+        "$GODOT_CONFIG": godot_json(page_config(facts, file_sizes, libraries)),
         "$GODOT_SPLASH_COLOR": "#"
         + color_html(facts.setting("application/boot_splash/bg_color")),
         "$GODOT_SPLASH_CLASSES": _splash_classes(facts),
@@ -151,7 +156,9 @@ def _project_name(facts: Facts) -> str:
     return str(facts.setting("application/config/name") or "") or "Godot Game"
 
 
-def _cached_files(facts: Facts) -> tuple[list[str], list[str]]:
+def _cached_files(
+    facts: Facts, libraries: Sequence[str] = ()
+) -> tuple[list[str], list[str]]:
     """The files the service worker caches on install, and those it caches on demand."""
     icons = (
         [f"{NAME}.icon.png", f"{NAME}.apple-touch-icon.png"]
@@ -160,7 +167,10 @@ def _cached_files(facts: Facts) -> tuple[list[str], list[str]]:
     )
     installed = [f"{NAME}.html", f"{NAME}.js", f"{NAME}.offline.html", *icons]
     installed += [f"{NAME}.audio.worklet.js", f"{NAME}.audio.position.worklet.js"]
-    return installed, [f"{NAME}.wasm", f"{NAME}.pck"]
+    on_demand = [f"{NAME}.wasm", f"{NAME}.pck"]
+    if facts.option("variant/extensions_support"):
+        on_demand += [f"{NAME}.side.wasm", *libraries]
+    return installed, on_demand
 
 
 def _cache_version(site: Path, files: list[str]) -> str:
@@ -171,9 +181,11 @@ def _cache_version(site: Path, files: list[str]) -> str:
     return digest.hexdigest()[:20]
 
 
-def service_worker(template: str, facts: Facts, site: Path) -> str:
+def service_worker(
+    template: str, facts: Facts, site: Path, libraries: Sequence[str] = ()
+) -> str:
     """Return Godot's service worker with its placeholders filled, as _build_pwa does."""
-    installed, on_demand = _cached_files(facts)
+    installed, on_demand = _cached_files(facts, libraries)
     replacements = {
         "___GODOT_VERSION___": _cache_version(site, installed + on_demand),
         "___GODOT_NAME___": _project_name(facts)[:16],
@@ -243,7 +255,9 @@ def check_pwa_icons(facts: Facts) -> None:
             )
 
 
-def write_pwa(args: argparse.Namespace, facts: Facts, site: Path) -> None:
+def write_pwa(
+    args: argparse.Namespace, facts: Facts, site: Path, libraries: Sequence[str]
+) -> None:
     """Write the progressive web app's files beside the page."""
     check_pwa_icons(facts)
     for size in _ICON_SIZES:
@@ -253,7 +267,10 @@ def write_pwa(args: argparse.Namespace, facts: Facts, site: Path) -> None:
     if args.offline_page:
         shutil.copyfile(args.offline_page, site / f"{NAME}.offline.html")
     template = _read(args.runtime / "godot.service.worker.js")
-    _write(site / f"{NAME}.service.worker.js", service_worker(template, facts, site))
+    _write(
+        site / f"{NAME}.service.worker.js",
+        service_worker(template, facts, site, libraries),
+    )
     (site / f"{NAME}.manifest.json").write_bytes(manifest(facts).encode("utf-8"))
 
 
@@ -313,16 +330,21 @@ def export(args: argparse.Namespace) -> None:
     site: Path = args.output
     site.mkdir(parents=True, exist_ok=True)
     copy_template(args.runtime, site, is_pwa(facts))
+    # Godot's export copies each extension's library beside the page, under its own name.
+    libraries = []
+    for library in args.extension:
+        shutil.copyfile(library, site / library.name)
+        libraries.append(library.name)
     shutil.copyfile(args.pack, site / f"{NAME}.pck")
     file_sizes = {
         f"{NAME}.pck": (site / f"{NAME}.pck").stat().st_size,
         f"{NAME}.wasm": (site / f"{NAME}.wasm").stat().st_size,
     }
     shell = _read(args.shell or args.runtime / "godot.html")
-    _write(site / f"{NAME}.html", page(shell, facts, file_sizes))
+    _write(site / f"{NAME}.html", page(shell, facts, file_sizes, libraries))
     copy_images(args.images, site, facts)
     if is_pwa(facts):
-        write_pwa(args, facts, site)
+        write_pwa(args, facts, site, libraries)
     _renderer_note(facts)
     _hosting_note(facts)
     write_zip(
@@ -348,6 +370,13 @@ def main() -> None:
     )
     parser.add_argument("--shell", type=Path, help="the pack's own HTML shell")
     parser.add_argument("--offline-page", type=Path, help="the pack's own offline page")
+    parser.add_argument(
+        "--extension",
+        type=Path,
+        action="append",
+        default=[],
+        help="an extension's side module",
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--archive", type=Path, required=True)
     export(parser.parse_args())

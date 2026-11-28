@@ -7,11 +7,12 @@ PCK, the page with its configuration, the boot splash and the icons the shell pr
 rendered. The directory deploys as it is; its ZIP holds the same files.
 """
 
+load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//godot:providers.bzl", "GodotPackInfo", "GodotWebAppInfo")
 load("//godot/private:export_options.bzl", "string_option")
 load("//godot/private:providers.bzl", "GodotComponentInfo", "GodotRuntimeInfo")
 load("//godot/private/config:application.bzl", "missing_extension_libraries_report")
-load("//godot/private/config:settings.bzl", "THREADS_CONSTRAINT")
+load("//godot/private/config:settings.bzl", "EXPORT_PLATFORM", "THREADS_CONSTRAINT")
 load("//godot/private/engine:profiles.bzl", "engine_profile")
 load(":launch.bzl", "LAUNCH_ATTRS", "launcher")
 load(":shell.bzl", "ENGINE_CHECK_ATTRS", "check_engine", "pack_facts")
@@ -74,6 +75,40 @@ def _isolation(pack, threads):
     ensures = _authored_true(pack, "progressive_web_app/ensure_cross_origin_isolation_headers")
     return "service_worker" if pwa and ensures else "headers"
 
+def _extension_libraries(ctx, pack, runtime):
+    """
+    The side modules of the extensions the application delivers, which load from beside the page.
+
+    Each must come from the Emscripten version of the runtime, and their names must differ:
+    Godot's export places every one at the page's directory under its own name.
+    """
+    libraries = {}
+    runtime_version = getattr(runtime, "emscripten_version", None)
+    for extension in pack.project.runtime_extensions:
+        library = extension.library
+        toolchain_id = getattr(library, "toolchain_id", "")
+        version = toolchain_id.removeprefix("emscripten-")
+        if toolchain_id.startswith("emscripten-") and not runtime_version:
+            fail("%s: the runtime of Godot %s names no Emscripten version, so the extension %s cannot be checked against it." % (
+                ctx.label,
+                runtime.version,
+                extension.label,
+            ))
+        if toolchain_id.startswith("emscripten-") and version != runtime_version:
+            fail("%s: the extension %s is built with Emscripten %s, but the runtime of Godot %s for %s with %s." % (
+                ctx.label,
+                extension.label,
+                version,
+                runtime.version,
+                ctx.attr._export_platform[BuildSettingInfo].value.rpartition(":")[2] or "the web",
+                runtime_version,
+            ))
+        name = library.file.basename
+        if name in libraries:
+            fail("%s: the extensions' web libraries %s and %s are both named %s" % (ctx.label, libraries[name].path, library.file.path, name))
+        libraries[name] = library.file
+    return libraries.values()
+
 def _package(ctx, pack, runtime, name):
     """Write the web export's directory, named name, and its ZIP; return both."""
     site = ctx.actions.declare_directory(ctx.label.name + "/" + name)
@@ -88,7 +123,9 @@ def _package(ctx, pack, runtime, name):
         if file
     }
     args = ctx.actions.args()
-    args.add("--runtime", _template(ctx, runtime).dirname)
+    extensions = _extension_libraries(ctx, pack, runtime)
+    args.add("--runtime", _template(ctx, runtime, extensions).dirname)
+    args.add_all(extensions, before_each = "--extension")
     args.add("--pack", pack.pack_file)
     args.add("--facts", pack.facts)
     args.add("--analysis-defaults", json.encode(engine_profile(pack.version)["web_analysis_defaults"]))
@@ -103,7 +140,7 @@ def _package(ctx, pack, runtime, name):
         executable = ctx.executable._packager,
         arguments = [args],
         inputs = depset(
-            [pack.pack_file, pack.facts] + pack.icons + files.values(),
+            [pack.pack_file, pack.facts] + pack.icons + files.values() + extensions,
             transitive = [runtime.files],
         ),
         outputs = [site, archive],
@@ -112,9 +149,9 @@ def _package(ctx, pack, runtime, name):
     )
     return site, archive
 
-def _template(ctx, runtime):
-    """The godot.wasm of the runtime's template that the export platform needs."""
-    kind = "threads" if _threads(ctx) else "nothreads"
+def _template(ctx, runtime, extensions):
+    """The godot.wasm of the runtime's template that the export platform and the extensions need."""
+    kind = ("extensions_" if extensions else "") + ("threads" if _threads(ctx) else "nothreads")
     templates = getattr(runtime, "web_templates", None) or {"nothreads": runtime.executable}
     if kind not in templates:
         fail("%s: the web runtime %s has no template with %s" % (ctx.label, runtime.origin, kind))
@@ -179,6 +216,7 @@ godot_web_application = rule(
         "pack": attr.label(doc = "The application pack.", mandatory = True, providers = [GodotPackInfo]),
         "runtime": attr.label(doc = "The resolved web runtime.", mandatory = True, providers = [GodotRuntimeInfo]),
         "app_name": attr.string(doc = "The name of the directory and its ZIP; the target's name by default."),
+        "_export_platform": attr.label(default = EXPORT_PLATFORM),
         "_threads": attr.label(default = THREADS_CONSTRAINT),
         "_web_hook": attr.label(
             default = Label("//tools/platforms/launch:launch_web_hook.js"),

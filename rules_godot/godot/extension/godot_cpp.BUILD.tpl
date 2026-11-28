@@ -13,7 +13,11 @@ godot_cpp_bindings(
     visibility = ["//visibility:private"],
     outs = {OUTS},
     api = {API},
-    bits = {BITS},
+    # WebAssembly is 32-bit, whatever the bindings are for elsewhere.
+    bits = select({
+        {WEB}: "32",
+        "//conditions:default": {BITS},
+    }),
     generator = "binding_generator.py",
     interface = "gdextension/gdextension_interface.json",
     interface_generator = "make_interface_header.py",
@@ -57,7 +61,11 @@ cc_library(
             "-fvisibility=hidden",
         ],
     }),
-    defines = {DEFINES},
+    # As upstream, threads where the platform has them: everywhere but the web without.
+    defines = {DEFINES} + select({
+        {WEB_NOTHREADS}: [],
+        "//conditions:default": ["THREADS_ENABLED"],
+    }),
     # Upstream's header search order; do not sort.
     includes = [
         "include",

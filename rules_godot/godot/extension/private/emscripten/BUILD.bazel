@@ -1,0 +1,64 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load(":start_files.bzl", "emscripten_start_files")
+load(":toolchain_config.bzl", "python_files")
+
+# The ruleset's packages may depend on this package's implementation libraries; Starlark
+# load visibility still restricts who loads its modules.
+package(default_visibility = ["//godot:__subpackages__"])
+
+# The templates and the configuration rule of the Emscripten SDK repositories that the
+# godot_engines extension declares; their generated BUILD files load and name them.
+exports_files(
+    [
+        "emcc.sh.tpl",
+        "emscripten_config.tpl",
+        "sdk.BUILD.tpl",
+        "toolchain_config.bzl",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# Python for emcc, resolved for the execution platform of the toolchain's actions.
+python_files(
+    name = "python",
+    visibility = ["//visibility:public"],
+)
+
+# What every threaded side module links in place of emcc's cached crtbegin object.
+emscripten_start_files(
+    name = "threaded_start_files",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "start_files",
+    srcs = ["start_files.bzl"],
+    deps = [
+        "@rules_cc//cc:find_cc_toolchain",
+        "@rules_cc//cc/common:cc_common",
+        "@rules_cc//cc/common:cc_info",
+    ],
+)
+
+bzl_library(
+    name = "toolchain_config",
+    srcs = ["toolchain_config.bzl"],
+    deps = [
+        "@bazel_tools//tools/build_defs/cc:action_names.bzl",
+        "@rules_cc//cc:cc_toolchain_config_lib",
+        "@rules_cc//cc/common:cc_common",
+        "@rules_cc//cc/toolchains:cc_toolchain_config_info",
+    ],
+)
+
+bzl_library(
+    name = "sdk",
+    srcs = ["sdk.bzl"],
+    deps = ["//godot/private/engine:profiles"],
+)
+
+bzl_library(
+    name = "unpinned",
+    srcs = ["unpinned.bzl"],
+)

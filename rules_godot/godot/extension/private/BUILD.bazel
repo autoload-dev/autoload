@@ -27,6 +27,7 @@ bzl_library(
     srcs = ["extension_library.bzl"],
     deps = [
         ":ios_framework",
+        "//godot/extension/private/emscripten:start_files",
         "//godot/private:macros",
         "@bazel_skylib//rules:write_file",
         "@rules_cc//cc:cc_binary",

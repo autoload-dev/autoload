@@ -307,6 +307,7 @@ bzl_library(
         "//godot/private/config:settings",
         "//godot/private/config:transitions",
         "//godot/private/engine:profiles",
+        "@bazel_skylib//lib:structs",
     ],
 )
 

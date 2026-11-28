@@ -5,6 +5,8 @@ The library passes its entry symbol on, so an extension of it needs none of its 
 extension fails when its entry_symbol differs from the library's, or when its library
 carries none and it names none. The library's file is named after library_name. On iOS the
 extension carries the dynamic frameworks the library's code links, so applications embed them.
+On the web the side module exports only the entry symbol. An engine whose Godot minor has no
+pinned Emscripten release gets a web toolchain that says so.
 """
 
 load("@rules_apple//apple:providers.bzl", "AppleFrameworkImportInfo")
@@ -13,7 +15,9 @@ load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
 load("@rules_testing//lib:test_suite.bzl", "test_suite")
 load("@rules_testing//lib:truth.bzl", "matching")
 load("//godot/extension:defs.bzl", "godot_extension", "godot_extension_library")
+load("//godot/extension/private/emscripten:unpinned.bzl", "emscripten_unpinned_toolchain")
 load("//godot/private:providers.bzl", "GodotExtensionInfo")
+load("//godot/private/tests:fixture_files.bzl", "fixture_file")
 load(":descriptor_tests.bzl", "descriptor_contents")
 load(":library_fixtures.bzl", "dynamic_xcframework_fixture")
 
@@ -110,6 +114,75 @@ def _ios_extension_carries_the_frameworks_the_code_links(env, target):
     ]
     env.expect.that_collection(binaries).contains("FixtureCore")
 
+_WEB_THREADS = {"//command_line_option:platforms": str(Label("//godot/platforms:web_wasm32_threads"))}
+
+def _test_prebuilt_side_module_loads_on_the_web(name):
+    fixture_file(name = name + "_module", out = name + "/libprebuilt.wasm")
+    godot_extension(
+        name = name + "_extension",
+        entry_symbol = "prebuilt_init",
+        library = select({
+            "//godot/platforms:is_web": ":" + name + "_module",
+            "//conditions:default": None,
+        }),
+        tags = ["manual"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_extension",
+        impl = _prebuilt_side_module_loads_on_the_web,
+        attr_values = _SMALL,
+        config_settings = _WEB_THREADS,
+    )
+
+# A prebuilt .wasm side module is the web's dynamic library; its feature tags carry the
+# threads ABI, as Godot's own web libraries do.
+def _prebuilt_side_module_loads_on_the_web(env, target):
+    library = target[GodotExtensionInfo].library
+    env.expect.that_str(library.link_kind).equals("dynamic")
+    env.expect.that_str(library.tags).equals("web.wasm32.threads.release")
+    env.expect.that_str(library.file.basename).equals("libprebuilt.wasm")
+
+def _test_side_module_exports_only_its_entry_symbol(name):
+    _library(name + "_library", library_name = "fixture")
+    analysis_test(
+        name = name,
+        target = name + "_library.side_module/libfixture.wasm",
+        impl = _side_module_exports_only_its_entry_symbol,
+        attr_values = _SMALL,
+        config_settings = _WEB_THREADS,
+    )
+
+# SIDE_MODULE=2 follows the ABI's SIDE_MODULE=1, so emcc exports only the named function.
+def _side_module_exports_only_its_entry_symbol(env, target):
+    link = [action for action in target.actions if action.mnemonic == "CppLink"][0]
+    argv = link.argv
+    env.expect.that_collection(argv).contains("-sEXPORTED_FUNCTIONS=_archive_fixture_init")
+    env.expect.that_collection(argv).contains("-sSIDE_MODULE=2")
+    last = [index for index, arg in enumerate(argv) if arg.startswith("-sSIDE_MODULE=")][-1]
+    env.expect.that_str(argv[last]).equals("-sSIDE_MODULE=2")
+
+def _test_an_engine_without_an_emscripten_release_says_so(name):
+    emscripten_unpinned_toolchain(
+        name = name + "_toolchain",
+        engine = "future",
+        series = "4.9",
+        version = "4.9.0-stable",
+        tags = ["manual"],
+    )
+    analysis_test(
+        name = name,
+        target = name + "_toolchain",
+        impl = _an_engine_without_an_emscripten_release_says_so,
+        attr_values = _SMALL,
+        expect_failure = True,
+    )
+
+def _an_engine_without_an_emscripten_release_says_so(env, target):
+    env.expect.that_target(target).failures().contains_predicate(matching.contains(
+        "The engine future has no web toolchain: rules_godot pins no Emscripten release for Godot 4.9 (4.9.0-stable)",
+    ))
+
 def extension_library_test_suite(name):
     test_suite(
         name = name,
@@ -118,5 +191,8 @@ def extension_library_test_suite(name):
             _test_library_is_named_after_library_name,
             _test_entry_symbol_mismatches_fail,
             _test_ios_extension_carries_the_frameworks_the_code_links,
+            _test_prebuilt_side_module_loads_on_the_web,
+            _test_side_module_exports_only_its_entry_symbol,
+            _test_an_engine_without_an_emscripten_release_says_so,
         ],
     )

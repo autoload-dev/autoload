@@ -1,5 +1,6 @@
 """PCK exports of a project's view, with the native code of each platform slice."""
 
+load("@bazel_skylib//lib:structs.bzl", "structs")
 load("//godot:providers.bzl", "GodotPackInfo")
 load("//godot/engine/private:selection.bzl", "ENGINE_ATTRS", "ENGINE_DOC", "engine_transition")
 load("//godot/private:actions.bzl", "run_editor_action", "write_manifest")
@@ -226,7 +227,7 @@ def _synthesized_cpus(context, profile):
         return []
     return [cpu for cpu in context.cpus if cpu not in profile["ios"]["cpus"]]
 
-def _export_platform(ctx):
+def _export_platform(ctx, project):
     """
     The pack's platform slice, editor version, engine profile and resolved export options.
 
@@ -234,7 +235,11 @@ def _export_platform(ctx):
         A struct of the configured context, version, profile, resolved export options,
         the CPUs the export synthesizes and the features the platform slice derives.
     """
-    context = configured_context(ctx)
+
+    # The export's GDExtension support follows the extensions the platform slice loads.
+    context = struct(**(structs.to_dict(configured_context(ctx)) | {
+        "extensions": bool(project.runtime_extensions),
+    }))
     version = ctx.toolchains[EDITOR_TOOLCHAIN].godot.version
     profile = engine_profile(version)
     resolved = resolve_export_options(ctx.attr.export_options, context, profile, version)
@@ -511,7 +516,7 @@ def _pack_plan(ctx, project):
     """Decide everything the pack's actions read, with the pack's checks in their order."""
     view = project.view
     checks = _start_checks(ctx, view)
-    platform = _export_platform(ctx)
+    platform = _export_platform(ctx, project)
     editor_resource_paths = _editor_files(project)
     pack_members, shell_members = _staged_members(project, view)
     layout = _runtime_layout(project)

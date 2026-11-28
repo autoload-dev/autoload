@@ -113,6 +113,7 @@ fails analysis.
 | Linux, Android | a shared library, `lib<library_name>.so` |
 | macOS | a dynamic library, `lib<library_name>.so` |
 | iOS | a dynamic framework, `<library_name>.framework`, or with `ios_linkage = "static"` the archive the application links |
+| Web | a side module, `lib<library_name>.wasm`, with the engine's ABI; see [web extensions](#web-extensions) |
 
 `library_name` is the target's name by default; `godot_cc_extension` names the library
 after the extension, so `game_extension` delivers `libgame_extension.so`. A prebuilt file
@@ -199,7 +200,7 @@ libraries delivered separately, see [export membership](resources.md#export-memb
 An extension has no library on a platform where the branch of its `library` is `None`,
 whether its libraries are prebuilt or built from source. The library and its sources are not
 analyzed there. `godot_cc_extension` has a library on every platform
-`godot_extension_library` links for and none on the others.
+`godot_extension_library` links for, the web included.
 
 ```starlark
 godot_extension(
@@ -254,6 +255,80 @@ that use them. An application that is not meant for a platform says so with
 without a branch for the platform, such as one with `no_match_error`, stays Bazel's analysis
 error for every target that reaches it. The setting applies to `godot_app`; source runs,
 tests and the editor variant load the extensions of the host.
+
+## Web extensions
+
+On the web an extension library is a `.wasm` side module that the engine loads beside the
+page. `godot_extension_library`, and so `godot_cc_extension`, link one with the C/C++
+toolchain of the web: nothing to register, since the engine's hub provides it with the
+engine, as it provides the Android toolchains. Each Godot version gets the Emscripten version
+its official web templates were built with, and the stable release and the next minor's
+preview build their extensions in one invocation:
+
+| Godot | Emscripten |
+| --- | --- |
+| 4.7 | 4.0.20 |
+| 4.8 | 6.0.12 |
+
+An engine of another minor has no web toolchain; its web extensions fail with an error that
+names the engine and its minor.
+
+Bazel fetches an Emscripten SDK, 1.5 to 1.6 GB unpacked per version and execution platform,
+only when a build compiles an extension for the web; Linux and macOS execution platforms,
+x86_64 and ARM64, have one, so remote execution works. Every object of the extension,
+godot-cpp's included, compiles with the engine's ABI: as a side module with WebAssembly
+longjmp, 32-bit bindings, and with threads where the [export platform](platforms.md#threads)
+has them. A threaded side module links its start file from the build, not from Emscripten's
+cache, which the SDK archives lack. As on other platforms, the side module exports only its
+entry symbol: web objects compile with hidden visibility, so one extension's godot-cpp stays
+apart from another's.
+
+```starlark
+godot_cc_extension(
+    name = "game_extension",
+    srcs = ["register_types.cc", "movement.cc"],
+    entry_symbol = "game_library_init",
+)
+```
+
+The descriptor's entries carry `threads` or `nothreads`, as Godot's own web libraries do:
+
+```ini
+[libraries]
+web.wasm32.nothreads.release = "res://addons/game_extension/bin/web.wasm32.nothreads.release/libgame_extension.wasm"
+web.wasm32.threads.release = "res://addons/game_extension/bin/web.wasm32.threads.release/libgame_extension.wasm"
+```
+
+An extension declared from the primitives adds a branch for the web to its `library`. A
+prebuilt extension names a `.wasm` side module per threads ABI:
+
+```starlark
+godot_extension(
+    name = "prebuilt",
+    entry_symbol = "game_library_init",
+    library = select({
+        "@autoload_rules_godot//godot/platforms:is_web_nothreads": "bin/libgame.web.nothreads.wasm32.wasm",
+        "@autoload_rules_godot//godot/platforms:is_web_threads": "bin/libgame.web.threads.wasm32.wasm",
+        "//conditions:default": None,
+    }),
+)
+```
+
+An application whose packs have web extensions takes Godot's template with GDExtension
+support, and its packs export with `variant/extensions_support`, which Bazel owns: an
+authored value fails. Its directory gains the engine as `index.side.wasm` and each extension's
+side module under its own name, which the page's configuration lists. That template loads the
+engine as a side module: 1.5 MB plus 44.1 MB instead of 39.5 MB for 4.7.2, so an application
+with extensions is larger and loads slower. An extension built with another Emscripten version
+than the runtime's fails analysis, as a toolchain registered ahead of the hub's would:
+
+```
+//game:app: the extension //game:game_extension is built with Emscripten 5.0.2, but the
+runtime of Godot 4.7.2 for web_wasm32 with 4.0.20.
+```
+
+Extensions that need C++ exceptions do not run on 4.7; from 4.8 they must be built with
+WebAssembly exceptions, which the toolchain does not enable yet.
 
 ## Upgrade the engine without rebuilding the extension
 

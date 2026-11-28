@@ -1,0 +1,47 @@
+load("//godot:app.bzl", "godot_app")
+load("//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("//godot/extension:defs.bzl", "godot_cc_extension")
+
+# A web application with a C ABI extension, which its page loads as a side module.
+package(
+    default_testonly = True,
+    default_visibility = ["//godot/platforms/private/tests/web:__subpackages__"],
+)
+
+godot_cc_extension(
+    name = "hello",
+    srcs = ["hello.cc"],
+    entry_symbol = "rules_godot_library_init",
+    resource_path = "native/hello.gdextension",
+    tags = ["manual"],
+)
+
+godot_resources(
+    name = "main",
+    srcs = [
+        "main.gd",
+        "main.tscn",
+    ],
+    tags = ["manual"],
+    deps = [":hello"],
+)
+
+godot_project(
+    name = "extension",
+    project_file = "project.godot",
+    tags = ["manual"],
+)
+
+godot_pack(
+    name = "pack",
+    preset_settings = {"script_export_mode": "0"},
+    project = ":extension",
+    tags = ["manual"],
+    deps = [":main"],
+)
+
+godot_app(
+    name = "app",
+    pack = ":pack",
+    tags = ["manual"],
+)

@@ -95,6 +95,21 @@ DEFINES = MODE_DEFINES + select({
     "@platforms//os:macos": ["DART_TARGET_OS_MACOS"],
 })
 
+# The platforms the defines above cover, where the Dart VM runs: elsewhere, such as the web,
+# its libraries are incompatible, so a wildcard build for another platform skips them. Keep
+# both lists in step with DEFINES.
+DART_COMPATIBLE = select({
+    "@platforms//cpu:arm64": [],
+    "@platforms//cpu:x86_64": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+}) + select({
+    "@platforms//os:android": [],
+    "@platforms//os:ios": [],
+    "@platforms//os:linux": [],
+    "@platforms//os:macos": [],
+    "//conditions:default": ["@platforms//:incompatible"],
+})
+
 # runtime/BUILD.gn's dart_config flags. Both compilers ignore the other's -Wno- options.
 COPTS = [
     # Apple's toolchain defines DEBUG outside optimized builds; Dart reads it as a debug VM.
@@ -218,6 +233,7 @@ cc_library(
         "//conditions:default": [],
     }),
     local_defines = DEFINES,
+    target_compatible_with = DART_COMPATIBLE,
     deps = [
         ":double_conversion",
         ":headers",
@@ -257,6 +273,7 @@ cc_library(
         "//conditions:default": [],
     }),
     local_defines = DEFINES,
+    target_compatible_with = DART_COMPATIBLE,
     deps = [
         ":headers",
         ":libdart",
@@ -287,6 +304,7 @@ cc_library(
         "runtime/engine",
     ],
     local_defines = DEFINES,
+    target_compatible_with = DART_COMPATIBLE,
     visibility = ["//visibility:public"],
     deps = [
         ":dart_io",

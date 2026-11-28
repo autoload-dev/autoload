@@ -105,6 +105,8 @@ godot_cpp_bindings = repository_rule(
         "_defs": attr.label(default = Label("//godot/extension/private:bindings.bzl")),
         "_cc_library": attr.label(default = Label("@rules_cc//cc:cc_library.bzl")),
         "_windows_constraint": attr.label(default = Label("@platforms//os:windows")),
+        "_web": attr.label(default = Label("//godot/platforms:is_web")),
+        "_web_nothreads": attr.label(default = Label("//godot/platforms:is_web_nothreads")),
         "_build_template": attr.label(default = Label("//godot/extension:godot_cpp.BUILD.tpl")),
     },
 )

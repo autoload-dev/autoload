@@ -22,6 +22,7 @@ load(
     "recipe_declarations",
     "slot_name",
 )
+load("//godot/extension/private/emscripten:sdk.bzl", "sdk_repositories")
 load("//godot/private:supply_chain.bzl", "LIBRARY_PACKAGES")
 load("//godot/private:versions.bzl", "godot_version_error")
 
@@ -752,6 +753,9 @@ def _engine_profiles(engine, default, profiles):
     combined = named | unnamed
     return {label: combined[label] for label in sorted(combined)}
 
+def _emscripten_sdks(engine):
+    return [_declaration("emscripten_sdk", **sdk) for sdk in sdk_repositories(engine.version)]
+
 def _engine_declarations(selection, profiles, _fail):
     """
     Return one engine's repositories and what the toolchains repository registers of it.
@@ -799,8 +803,8 @@ def _engine_declarations(selection, profiles, _fail):
         hub.update(built.pinning)
     hub.update(components = json.encode(slots), android_runtimes = json.encode(android_runtimes))
     return struct(
-        declarations = declarations + [_declaration("engine_hub", **hub)],
-        toolchains = {"name": engine.name, "default_engine": selection.default, "slots": slots},
+        declarations = declarations + _emscripten_sdks(engine) + [_declaration("engine_hub", **hub)],
+        toolchains = {"name": engine.name, "default_engine": selection.default, "slots": slots, "version": engine.version},
     )
 
 def _profile_tag_error(tag, names, has_default):
@@ -823,8 +827,8 @@ def _profile_error(modules, selections):
     errors = [error for error in errors if error]
     return errors[0] if errors else None
 
-# The repositories engines of one source archive share.
-_SHARED_RULES = ["godot_bundled_packages", "godot_engine_source", "godot_engine_tree"]
+# The repositories engines share: of one source archive, and of one Emscripten release.
+_SHARED_RULES = ["emscripten_sdk", "godot_bundled_packages", "godot_engine_source", "godot_engine_tree"]
 
 def _same_archive(first, other):
     """

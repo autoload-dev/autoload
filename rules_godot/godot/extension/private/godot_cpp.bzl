@@ -70,7 +70,7 @@ def godot_cpp_bindings_impl(ctx, *, _fail = fail):
         profile = "rules_godot_profile.json"
         profile_generator = "build_profile.py"
     source_def = str(ctx.attr._defs)
-    defines = ["GDEXTENSION", "THREADS_ENABLED"] + (
+    defines = ["GDEXTENSION"] + (
         ["REAL_T_IS_DOUBLE"] if ctx.attr.precision == "double" else []
     ) + (
         ["DEBUG_ENABLED", "HOT_RELOAD_ENABLED"] if ctx.attr.debug_features else []
@@ -80,6 +80,8 @@ def godot_cpp_bindings_impl(ctx, *, _fail = fail):
         "{CC_LIBRARY_BZL}": repr(str(ctx.attr._cc_library)),
         "{API}": repr(ctx.attr.api_path),
         "{BITS}": repr(ctx.attr.bits),
+        "{WEB}": repr(str(ctx.attr._web)),
+        "{WEB_NOTHREADS}": repr(str(ctx.attr._web_nothreads)),
         "{PRECISION}": repr(ctx.attr.precision),
         "{OUTS}": starlark_list(sorted(binding_outputs(api, enabled)), indent = "    "),
         "{PROFILE}": repr(profile),

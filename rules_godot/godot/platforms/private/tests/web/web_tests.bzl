@@ -4,7 +4,8 @@ What a godot_app for the web export platform provides, and what it rejects.
 It provides GodotWebAppInfo, whose page is index.html and which needs no cross-origin
 isolation without threads, the host's headers with threads, or the service worker of a
 progressive web app that ensures them; its variant is Bazel's, so a pack that authors thread support or
-extension support fails, and so does a pack with C#.
+extension support fails, and so does a pack with C#. An application whose loadable pack has
+an extension takes the template with extension support and delivers the side module.
 """
 
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")
@@ -17,6 +18,7 @@ load("//godot:providers.bzl", "GodotWebAppInfo")
 visibility("private")
 
 _PARITY = "//godot/platforms/private/tests/web/fixtures/parity:"
+_EXTENSION = "//godot/platforms/private/tests/web/fixtures/extension:"
 
 _WEB = {"//command_line_option:platforms": str(Label("//godot/platforms:web_wasm32"))}
 
@@ -118,6 +120,29 @@ def _test_pwa_disabled_is_accepted(name):
         attr_values = _SMALL,
     )
 
+def _test_loadable_pack_extensions_reach_the_page(name):
+    # The start pack has no extension; the pack the application may load later has one.
+    godot_app(
+        name = name + "_app",
+        loadable_packs = [_EXTENSION + "pack"],
+        pack = _PARITY + "pack",
+        tags = ["manual"],
+        testonly = True,
+    )
+    analysis_test(
+        name = name,
+        target = name + "_app",
+        impl = _loadable_pack_extensions_reach_the_page,
+        config_settings = _WEB,
+        attr_values = _SMALL,
+    )
+
+def _loadable_pack_extensions_reach_the_page(env, target):
+    package = env.expect.that_target(target).action_named("GodotWebPackage")
+    package.argv().contains_at_least(["--extension"])
+    package.argv().contains_predicate(matching.str_matches("*web_dlink_nothreads_*"))
+    package.inputs().contains_predicate(matching.file_basename_equals("libhello.wasm"))
+
 def _analyzes(env, target):
     _ = (env, target)  # @unused
 
@@ -130,5 +155,6 @@ def web_test_suite(name):
             _test_csharp_project_fails,
             _test_threads_need_isolation,
             _test_pwa_disabled_is_accepted,
+            _test_loadable_pack_extensions_reach_the_page,
         ],
     )

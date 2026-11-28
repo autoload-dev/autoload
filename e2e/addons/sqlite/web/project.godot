@@ -1,0 +1,8 @@
+; The SQLite add-on in a web application: a main scene that queries an in-memory database.
+
+config_version=5
+
+[application]
+
+config/name="SQLite Web Smoke"
+run/main_scene="res://main/main.tscn"

@@ -252,6 +252,9 @@ def _macos_cpus_error(cpus):
 _WEB_TEMPLATES = {
     "nothreads": "web_nothreads_",
     "threads": "web_",
+    # With GDExtension support: a small main module that loads the engine as a side module.
+    "extensions_nothreads": "web_dlink_nothreads_",
+    "extensions_threads": "web_dlink_",
 }
 
 _VARIANTS = ["release", "debug"]
