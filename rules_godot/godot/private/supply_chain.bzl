@@ -165,8 +165,8 @@ def _target_name(name, taken):
 def _library(repository_ctx, library, name):
     """Write the license text of a library Godot bundles and return its declarations."""
     repository_ctx.file("%s/%s.txt" % (_PACKAGE, name), library.text, executable = False)
-    if " " not in library.spdx and not library.spdx.startswith("LicenseRef-"):
-        kind = repr(str(Label("@package_metadata//licenses/spdx:" + library.spdx)))
+    if library.kind:
+        kind = repr(str(Label("@package_metadata//licenses/spdx:" + library.kind)))
         kind_declaration = ""
     else:
         kind = repr(":%s_kind" % name)

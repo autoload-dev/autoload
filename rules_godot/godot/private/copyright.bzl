@@ -51,9 +51,22 @@ def words_of(text):
 
 # ==== Licenses ================================================================
 
-# Godot's license short names whose SPDX identifier differs, each with the evidence: Godot
-# writes Debian short names, and SPDX identifiers where Debian has none.
-_SPDX_IDENTIFIERS = {
+# The SPDX identifier of each of Godot's license short names on an SPDX list: Godot writes
+# Debian short names, and SPDX identifiers where Debian has none. Where they differ, the
+# comment gives the evidence. Any other short name, such as glslang's combination of
+# licenses or the Wide Open License (WOL), is on no SPDX list and becomes a LicenseRef.
+_SPDX = {
+    "Apache-2.0": "Apache-2.0",
+    "BSL-1.0": "BSL-1.0",
+    "CC-BY-4.0": "CC-BY-4.0",
+    "CC0-1.0": "CC0-1.0",
+    "FTL": "FTL",
+    "IJG": "IJG",
+    "MIT-0": "MIT-0",
+    "MPL-2.0": "MPL-2.0",
+    "OFL-1.1": "OFL-1.1",
+    "Unlicense": "Unlicense",
+    "Zlib": "Zlib",
     # Debian's name of the MIT license.
     "Expat": "MIT",
     "BSD-2-clause": "BSD-2-Clause",
@@ -69,23 +82,6 @@ _SPDX_IDENTIFIERS = {
     "X11": "HPND-sell-variant",
 }
 
-# Godot's license short names that are SPDX identifiers as they are. Any other short name,
-# such as glslang's combination of licenses or the Wide Open License (WOL), is on no SPDX
-# list and becomes a LicenseRef.
-_SPDX_AS_IS = [
-    "Apache-2.0",
-    "BSL-1.0",
-    "CC-BY-4.0",
-    "CC0-1.0",
-    "FTL",
-    "IJG",
-    "MIT-0",
-    "MPL-2.0",
-    "OFL-1.1",
-    "Unlicense",
-    "Zlib",
-]
-
 _OPERATORS = {"and": "AND", "or": "OR"}
 
 def _reference(text):
@@ -94,12 +90,6 @@ def _reference(text):
         character if character.isalnum() or character in ".-" else "-"
         for character in text.elems()
     ])
-
-def _spdx(short_name):
-    """The SPDX identifier of a short name, or None for one on no SPDX list."""
-    if short_name in _SPDX_IDENTIFIERS:
-        return _SPDX_IDENTIFIERS[short_name]
-    return short_name if short_name in _SPDX_AS_IS else None
 
 def spdx_license(license):
     """
@@ -116,7 +106,7 @@ def spdx_license(license):
         The SPDX expression, such as `MIT AND Zlib` or `LicenseRef-Expat-and-WOL`.
     """
     words = words_of(license)
-    identifiers = [_OPERATORS.get(word) or _spdx(word) for word in words]
+    identifiers = [_OPERATORS.get(word) or _SPDX.get(word) for word in words]
     if None in identifiers:
         return _reference("-".join(words))
     return " ".join(identifiers)
@@ -145,8 +135,9 @@ def bundled_libraries(text):
 
     Returns:
         The libraries in the file's order: structs of name, license (Godot's License
-        field, such as `Expat and Zlib`), spdx (its SPDX expression) and text (the
-        library's paragraphs and the texts of its licenses, as COPYRIGHT.txt has them).
+        field, such as `Expat and Zlib`), spdx (its SPDX expression), kind (the SPDX
+        identifier of a single license on the SPDX list, or None) and text (the library's
+        paragraphs and the texts of its licenses, as COPYRIGHT.txt has them).
     """
     paragraphs = [(lines, _fields(lines)) for lines in _paragraphs(text)]
     license_texts = {
@@ -173,10 +164,12 @@ def _files_by_library(paragraphs):
 
 def _library(name, library, license_texts):
     """A library of its Files paragraphs, with the texts of the licenses they name."""
+    spdx = _joined_spdx(library.licenses)
     return struct(
         name = name,
         license = " and ".join([_grouped(part, " or ", len(library.licenses)) for part in library.licenses]),
-        spdx = _joined_spdx(library.licenses),
+        spdx = spdx,
+        kind = spdx if spdx in _SPDX.values() else None,
         text = "\n\n".join(library.paragraphs + [
             license_texts[short_name]
             for short_name in _short_names(library.licenses)
