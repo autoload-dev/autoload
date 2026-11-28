@@ -128,7 +128,10 @@ def _files_by_library(paragraphs):
     for lines, fields in paragraphs:
         if "Files" not in fields or fields["Files"] == ["*"]:
             continue
-        library = libraries.setdefault(_library_name(fields), struct(licenses = [], paragraphs = []))
+        library = libraries.setdefault(
+            _library_name(fields),
+            struct(licenses = [], paragraphs = []),
+        )
         if fields["License"][0] not in library.licenses:
             library.licenses.append(fields["License"][0])
         library.paragraphs.append("\n".join(lines))
@@ -154,7 +157,10 @@ def _library(name, library, license_texts):
     spdx = _joined_spdx(library.licenses)
     return struct(
         name = name,
-        license = " and ".join([_grouped(part, " or ", len(library.licenses)) for part in library.licenses]),
+        license = " and ".join([
+            _grouped(part, " or ", len(library.licenses))
+            for part in library.licenses
+        ]),
         spdx = spdx,
         kind = spdx if spdx in _SPDX.values() else None,
         text = "\n\n".join(library.paragraphs + [

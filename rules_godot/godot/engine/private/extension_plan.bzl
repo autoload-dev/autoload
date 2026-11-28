@@ -170,7 +170,12 @@ def _android_shells(pins):
     for variant, pin in _SHELL_PINS:
         urls = _pinned(pins, pin + "_urls")
         if urls:
-            shells[variant] = struct(pin = pin, urls = urls, integrity = _pinned(pins, pin + "_integrity"), copyright = None)
+            shells[variant] = struct(
+                pin = pin,
+                urls = urls,
+                integrity = _pinned(pins, pin + "_integrity"),
+                copyright = None,
+            )
         elif pin in release:
             shells[variant] = struct(pin = pin, copyright = _catalogue_copyright(pins), **release[pin])
     return shells
@@ -661,7 +666,8 @@ def _binary_declarations(engine, release, plan):
         attributes for them: the COPYRIGHT.txt of catalogued shells.
     """
     shells, android_runtimes = _shell_declarations(engine, plan.android_shells)
-    parts = plan.editors.values() + ([plan.templates] if plan.templates else []) + plan.android_shells.values()
+    templates = [plan.templates] if plan.templates else []
+    parts = plan.editors.values() + templates + plan.android_shells.values()
     declarations = _copyright_declarations(engine, release, parts)
     declarations += _editor_declarations(engine, plan.editors)
     declarations += _templates_declarations(engine, plan.templates) + shells

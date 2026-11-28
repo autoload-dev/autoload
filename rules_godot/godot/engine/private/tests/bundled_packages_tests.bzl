@@ -34,8 +34,12 @@ _package_metadata_labels = aspect(
 def _test_the_editor_carries_the_bundled_libraries(name):
     analysis_test(
         name = name,
-        # The editor of Godot's official 4.7.2, which MODULE.bazel registers.
-        target = "@godot_editor_linux_x86_64//:editor",
+        # The host's editor of Godot's official 4.7.2, which MODULE.bazel registers and
+        # the host's builds fetch anyway.
+        target = select({
+            "@platforms//os:macos": "@godot_editor_macos//:editor",
+            "//conditions:default": "@godot_editor_linux_x86_64//:editor",
+        }),
         impl = _the_editor_carries_the_bundled_libraries,
         extra_target_under_test_aspects = [_package_metadata_labels],
     )
@@ -48,9 +52,9 @@ def _the_editor_carries_the_bundled_libraries(env, target):
         for name in [
             # Godot's own, then libraries of thirdparty/ and of Godot's modules.
             "package_metadata",
-            "zlib_metadata",
-            "the_freetype_project_metadata",
-            "bullet_continuous_collision_detection_and_physics_library_metadata",
+            "zlib.metadata",
+            "the_freetype_project.metadata",
+            "bullet_continuous_collision_detection_and_physics_library.metadata",
         ]
     ])
 

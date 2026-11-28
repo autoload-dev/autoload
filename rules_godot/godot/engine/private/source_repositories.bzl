@@ -71,13 +71,19 @@ def _read_tree(ctx):
     """Read the `tree.json` descriptor of the repository's engine tree, whose digest keys it."""
     return json.decode(ctx.read(ctx.path(ctx.attr.tree)))
 
-def _write_tree_metadata(ctx, tree):
-    """Give the repository's targets the package metadata of the tree's source archive."""
+def _write_tree_metadata(ctx, tree, bundled = False):
+    """
+    Give the repository's targets the package metadata of the tree's source archive.
+
+    With bundled, each library the tree's COPYRIGHT.txt lists is a package of its own, for
+    the repository's targets that hold the engine.
+    """
+    directory = ctx.path(ctx.attr.tree).dirname
     write_package_metadata(
         ctx,
         source_purl("godot", tree["version"], sha256 = tree["sha256"]),
-        "%s/LICENSE.txt" % ctx.path(ctx.attr.tree).dirname,
-        copyright = "%s/COPYRIGHT.txt" % ctx.path(ctx.attr.tree).dirname,
+        "%s/LICENSE.txt" % directory,
+        copyright = "%s/COPYRIGHT.txt" % directory if bundled else None,
     )
 
 def _link_tree(ctx, path = ""):
@@ -504,7 +510,7 @@ def engine_build_impl(ctx, *, _fail = fail):
     for placeholder in placeholders:
         ctx.delete(placeholder)
     _finish(ctx, tree, arguments, variants)
-    _write_tree_metadata(ctx, tree)
+    _write_tree_metadata(ctx, tree, bundled = True)
 
     # A pinned recipe depends only on the recipe, the sources and the lock file, and Android
     # and Apple configurations only on those and the environment recorded above, so Bazel's

@@ -94,17 +94,17 @@ BUNDLED_PACKAGES = "//%s:bundled_packages" % _PACKAGE
 _LIBRARY = """
 filegroup(
     name = "{name}",
-    package_metadata = [":{name}_metadata"],
+    package_metadata = [":{name}.metadata"],
 )
 
 package_metadata(
-    name = "{name}_metadata",
-    attributes = [":{name}_license"],
+    name = "{name}.metadata",
+    attributes = [":{name}.license"],
     purl = {purl},
 )
 
 license(
-    name = "{name}_license",
+    name = "{name}.license",
     kind = {kind},
     text = "{name}.txt",
 )
@@ -117,16 +117,20 @@ license(
 # on no SPDX list is a LicenseRef kind, which needs a license_kind of its own anyway.
 _LICENSE_KIND = """
 license_kind(
-    name = "{name}_kind",
+    name = "{name}.kind",
     full_name = {full_name},
     identifier = {identifier},
 )
 """
 
+# The package's own targets, which no library's target may take; a library's other targets
+# add a dot and a suffix to its name, which a name of words never has.
+_OWN_TARGETS = ["bundled_packages", "license", "package_metadata"]
+
 def _target_name(name, taken):
     """A target name of a library's name, lower case with underscores, unique among taken."""
-    words = words_of("".join([character if character.isalnum() else " " for character in name.lower().elems()]))
-    base = "_".join(words)
+    letters = [character if character.isalnum() else " " for character in name.lower().elems()]
+    base = "_".join(words_of("".join(letters))) or "library"
     target = base
     for number in range(2, len(taken) + 2):
         if target not in taken:
@@ -142,7 +146,7 @@ def _library(repository_ctx, library, name):
         kind = repr(str(Label("@package_metadata//licenses/spdx:" + library.kind)))
         kind_declaration = ""
     else:
-        kind = repr(":%s_kind" % name)
+        kind = repr(":%s.kind" % name)
         kind_declaration = _LICENSE_KIND.format(
             name = name,
             full_name = repr(library.license),
@@ -159,10 +163,12 @@ def _libraries(repository_ctx, copyright):
     if not copyright or not repository_ctx.path(copyright).exists:
         return [], []
     declarations = []
-    taken = {}
+    names = []
+    taken = {name: True for name in _OWN_TARGETS}
     for library in bundled_libraries(repository_ctx.read(copyright)):
-        declarations.append(_library(repository_ctx, library, _target_name(library.name, taken)))
-    return declarations, list(taken)
+        names.append(_target_name(library.name, taken))
+        declarations.append(_library(repository_ctx, library, names[-1]))
+    return declarations, names
 
 # ==== Repository metadata =====================================================
 

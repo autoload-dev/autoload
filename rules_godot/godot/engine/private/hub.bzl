@@ -63,15 +63,15 @@ def _declaration(slot, engine, default_engine):
     return _call("godot_%s_component" % slot["role"], values + _engine_values(engine, default_engine))
 
 def _android_runtime(variant, runtime):
-    attributes = [
-        "    name = %r," % variant,
-        "    shell = %r," % runtime["shell"],
-        "    bundled_packages = [%r]," % BUNDLED_PACKAGES,
-    ]
+    attributes = ["    name = %r," % variant, "    shell = %r," % runtime["shell"]]
     if runtime.get("visibility"):
         attributes.append("    visibility = %r," % runtime["visibility"])
     engine_libraries = runtime.get("engine_libraries", {})
-    if engine_libraries:
+    if not engine_libraries:
+        # The shell's own engine libraries serve: the hub carries their bundled packages. A
+        # source-built engine library carries its recipe's.
+        attributes.append("    bundled_packages = [%r]," % BUNDLED_PACKAGES)
+    else:
         # One label per variant serves every CPU; each platform slice repacks its own
         # engine library.
         attributes.append("    engine_library = select({\n%s    })," % "".join([

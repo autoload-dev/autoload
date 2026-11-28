@@ -1147,8 +1147,10 @@ on no SPDX list, such as glslang's, is a `LicenseRef`. The packages have no vers
 
 The list covers every library of `COPYRIGHT.txt`, also those a given build does not link,
 such as the Vulkan loader in a build without Vulkan, or the editor's own fonts in an
-exported application: it can name more than the application ships, never less. A source-built engine
-reads `COPYRIGHT.txt` from its source archive, a fork's included; its patches do not change it. The prebuilt binaries of a
-catalogued version read the file of the release's commit, which rules_godot pins beside the
-archives. Binaries you pin with `godot_engines.binaries` name Godot alone, since rules_godot
-does not know the sources they were built from.
+exported application: it can name more than the application ships. A source-built engine
+reads `COPYRIGHT.txt` from its source archive, a fork's included. Its patches and custom
+modules do not change the list, so declare the package metadata of a library they add
+yourself. The prebuilt binaries of a catalogued version read the file of the release's
+commit, which rules_godot pins beside the archives. Binaries you pin with
+`godot_engines.binaries` name Godot alone, since rules_godot does not know the sources they
+were built from.

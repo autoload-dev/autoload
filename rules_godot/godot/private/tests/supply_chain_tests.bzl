@@ -87,7 +87,7 @@ def _test_each_bundled_library_is_a_package_of_its_own(env):
     build = files["_package_metadata/BUILD.bazel"]
     for text in [
         'srcs = [":bullet_continuous_collision_detection_and_physics_library", ":servers_audio_effects_audio_effect_pitch_shift_cpp", ":smol_v", ":zlib"],',
-        'package_metadata = [":zlib_metadata"],',
+        'package_metadata = [":zlib.metadata"],',
         'purl = "pkg:generic/godot/zlib",',
         'purl = "pkg:generic/godot/SMOL-V",',
         'purl = "pkg:generic/godot/Bullet%20Continuous%20Collision%20Detection%20and%20Physics%20Library",',
