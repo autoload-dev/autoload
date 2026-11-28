@@ -27,16 +27,22 @@ The conventions check enforces it (the add-on module rules of
 [conventions.md](../docs/internal/conventions.md)):
 
 - `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.gitignore`, `.gitattributes`,
-  `.bazelversion`.
+  `.bazelversion` and `LICENSE`, the repository's, a shared file.
 - `.bazelrc` imports [module.bazelrc](module.bazelrc) and adds only its BuildBuddy tag.
   Settings for all modules go in that file.
 - Package metadata, which SBOM and license tools read from an application's build: the
   shared `REPO.bazel` gives every target of the module the `package_metadata` of its shared
-  root `BUILD.bazel`, the module's PURL and license. The build file of a third-party archive in
-  `third_party/` declares the archive's own: a PURL built with `purl.builder()`, whose version
-  follows the archive's URL, and the license of the project with its text from the archive,
+  root `BUILD.bazel`, the module's PURL and license with the text of its `LICENSE`, which
+  `//tools/ci:released_modules_carry_the_license_test` compares with the repository's.
+  The build file of a third-party archive in `third_party/` declares the archive's own: the
+  PURL of its declaration, and the license of the project with its text from the archive,
   not the licenses of the components a release bundles. `e2e/addons/sqlite/sbom/` checks that
   an SBOM of a pack names a module and the registry module it builds in.
+- Third-party archives: `third_party/archives.bzl` declares each with `github_archive`, its
+  version once, from which its URLs and its PURL are built, and exports the extension
+  `archives` that MODULE.bazel uses to fetch them. A module that declares archives gets the
+  shared `third_party/archive.bzl`, the helper, and `tests/third_party/`, which tests that
+  the URLs and the PURL carry the version.
 - `.bcr/addons/<module>/`, outside the module: the templates publish-to-bcr reads for a
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the
   registry's checks of a release. They are shared files: change them in the template.

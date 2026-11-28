@@ -2,6 +2,7 @@
 
 import contextlib
 import io
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -18,6 +19,7 @@ class GenerateTest(unittest.TestCase):
             mock.patch.object(generate, "bazel", return_value=0) as bazel,
             mock.patch.object(generate.declarations, "write"),
             mock.patch.object(generate.new, "stale_shared_files", return_value={}),
+            mock.patch.object(generate, "stale_ruleset_license", return_value={}),
         ):
             getattr(generate, call)(*args)
         return [tuple(c.args) for c in bazel.call_args_list]
@@ -55,6 +57,7 @@ class GenerateTest(unittest.TestCase):
             mock.patch.object(generate, "bazel", return_value=0),
             mock.patch.object(generate.declarations, "write") as write,
             mock.patch.object(generate.new, "stale_shared_files", return_value=stale),
+            mock.patch.object(generate, "stale_ruleset_license", return_value={}),
             mock.patch.object(generate.new, "write_files") as written,
             mock.patch.object(generate, "unstaged_files", return_value=unstaged),
         ):
@@ -81,6 +84,16 @@ class GenerateTest(unittest.TestCase):
     def test_without_paths_every_stale_shared_file_is_written(self) -> None:
         stale = {Path("addons/x/.bazelrc"): "import\n"}
         self.assertEqual((0, [stale]), self.shared([], stale, ["addons/x/.bazelrc"]))
+
+    def test_the_ruleset_carries_the_repository_license(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "LICENSE").write_text("license\n")
+            (root / "rules_godot").mkdir()
+            stale = generate.stale_ruleset_license(root)
+            self.assertEqual({Path("rules_godot/LICENSE"): "license\n"}, stale)
+            generate.new.write_files(root, stale)
+            self.assertEqual({}, generate.stale_ruleset_license(root))
 
 
 if __name__ == "__main__":

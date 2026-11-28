@@ -5,12 +5,13 @@ names of the BUILD files, and the Starlark files of a module and the labels in t
 
 from pathlib import Path
 
-from tools.addons.new import template_files
+from tools.addons.new import LICENSE, template_files
 from tools.conventions.context import BUILD_FILES, Location, Workspace
 from tools.setup.modules import is_addon_module
 
-# The files every module addons/<directory> owns: those of the generator's module template.
-MODULE_FILES = tuple(relative for _, relative in template_files("module"))
+# The files every module addons/<directory> has: those of the generator's module template and
+# its copy of the repository's license, which the generator writes too.
+MODULE_FILES = (*(relative for _, relative in template_files("module")), LICENSE)
 
 
 def at(path: Path | str) -> Location:

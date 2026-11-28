@@ -1,4 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("//:addons.bzl", "ADDON_REPOSITORIES")
+load(":license_texts_test.bzl", "license_texts_test")
 
 py_library(
     name = "work_lib",
@@ -16,6 +18,18 @@ py_library(
     deps = [
         "//tools/addons:new_lib",
         "//tools/setup:modules_lib",
+    ],
+)
+
+# Every released module carries the repository's license at its root, where its release
+# archive holds it, as the text of its package metadata's license.
+license_texts_test(
+    name = "released_modules_carry_the_license_test",
+    size = "small",
+    expected = "//:LICENSE",
+    package_licenses = ["@autoload_rules_godot//:license"] + [
+        repository + "//:license"
+        for repository in ADDON_REPOSITORIES
     ],
 )
 

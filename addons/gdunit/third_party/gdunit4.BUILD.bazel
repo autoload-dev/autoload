@@ -1,8 +1,8 @@
 # GdUnit4's sources at a commit: the files of its add-on directory, which
 # //gdunit assembles into the add-on.
 load("@package_metadata//licenses/rules:license.bzl", "license")
-load("@package_metadata//purl:purl.bzl", "purl")
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
+load("@autoload_gdunit//third_party:archives.bzl", "ARCHIVES")
 
 package(
     default_package_metadata = [":package_metadata"],
@@ -10,18 +10,11 @@ package(
 )
 
 # The archive's identity and license, for the SBOM and license tools that read package
-# metadata. Keep the version in step with the archive's URL in MODULE.bazel.
+# metadata; its package URL comes from the archive's declaration, as its URLs do.
 package_metadata(
     name = "package_metadata",
     attributes = [":license"],
-    purl = (
-        purl.builder()
-            .type("github")
-            .namespace("godot-gdunit-labs")
-            .name("gdUnit4")
-            .version("0127a55f4543dfc24746f6e5c7ba6f94105d51f2")
-            .build()
-    ),
+    purl = ARCHIVES["gdunit4"].purl,
     visibility = ["//visibility:public"],
 )
 

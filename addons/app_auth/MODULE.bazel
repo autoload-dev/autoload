@@ -45,17 +45,9 @@ maven.install(
 )
 use_repo(maven, "maven")
 
-# AppAuth for iOS and macOS, built from its release's Objective-C sources; only Apple builds
-# fetch it.
-http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
-http_archive(
-    name = "appauth",
-    build_file = "//third_party:appauth.BUILD.bazel",
-    sha256 = "908fc7ff2b7dd26e65e0e9ef6603e313de28855b4dc3071543f04238255f6df9",
-    strip_prefix = "AppAuth-iOS-3.0.0",
-    urls = ["https://github.com/openid/AppAuth-iOS/archive/refs/tags/3.0.0.tar.gz"],
-)
+# The third-party archives, each declared with its version in third_party/archives.bzl.
+archives = use_extension("//third_party:archives.bzl", "archives")
+use_repo(archives, "appauth")
 
 # The repository's own tooling at its root, whose linters `aspect lint` applies here; consumers
 # never see it.

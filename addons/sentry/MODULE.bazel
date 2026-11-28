@@ -33,17 +33,9 @@ maven.install(
 )
 use_repo(maven, "maven")
 
-# Sentry for Godot's release: its prebuilt GDExtension libraries, Godot Android plugin, iOS
-# frameworks and GDScript user-feedback UI.
-http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
-http_archive(
-    name = "sentry_godot",
-    build_file = "//third_party:sentry_godot.BUILD.bazel",
-    sha256 = "b639df4d50c4f00f6e57f26fc126640fa4a29a74050970cbfc0ecc85e5d0b460",
-    strip_prefix = "addons/sentry",
-    urls = ["https://github.com/getsentry/sentry-godot/releases/download/2.5.1/sentry-godot-2.5.1%2Bd30e663.zip"],
-)
+# The third-party archives, each declared with its version in third_party/archives.bzl.
+archives = use_extension("//third_party:archives.bzl", "archives")
+use_repo(archives, "sentry_godot")
 
 # The repository's own tooling at its root, whose linters `aspect lint` applies here; consumers
 # never see it.

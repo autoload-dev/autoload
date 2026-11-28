@@ -15,7 +15,11 @@ class RepositoryTestCase(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
-        for name in (".bazelversion", ".bcr/rules_godot/metadata.template.json"):
+        for name in (
+            ".bazelversion",
+            "LICENSE",
+            ".bcr/rules_godot/metadata.template.json",
+        ):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, self.root / name)
         # The root module, which ignores the add-on modules it declares in its segment.

@@ -134,6 +134,14 @@ SHARED_MODULE_FILES = frozenset(
 )
 
 
+# The repository's license, which every module carries at its root for its release archive
+# and the text of its package metadata's license.
+LICENSE = "LICENSE"
+# A module that brings third-party archives declares them in this file; the template tree
+# archives/, the helper it loads beside it and the test of its versions, is shared.
+ARCHIVES = "third_party/archives.bzl"
+
+
 def bazel_version(root: Path) -> str:
     return (root / ".bazelversion").read_text().strip()
 
@@ -174,8 +182,9 @@ REGISTRY_FILES = (*(relative for _, relative in template_files("bcr")), registry
 def shared_files(directory: str, root: Path = ROOT) -> dict[Path, str]:
     """
     What the generator writes to the shared files of the module addons/<directory>, by path
-    relative to root; the registry templates only for a module that is released, which has
-    them.
+    relative to root: the repository's license, the helper of third-party archives and its
+    test only for a module that declares some, and the registry templates only for a module that is
+    released, which has them.
     """
     tokens = Names(directory).tokens(bazel_version(root))
     module = module_path(directory)
@@ -184,6 +193,12 @@ def shared_files(directory: str, root: Path = ROOT) -> dict[Path, str]:
         for path, relative in template_files("module")
         if relative in SHARED_MODULE_FILES
     }
+    files[module / LICENSE] = (root / LICENSE).read_text()
+    if (root / module / ARCHIVES).is_file():
+        files.update(
+            (module / relative, render(path.read_text(), tokens))
+            for path, relative in template_files("archives")
+        )
     if (root / registry.templates_directory(directory)).is_dir():
         files.update(registry_files(directory, root, tokens))
     return files
@@ -222,6 +237,9 @@ def generate(
     written = []
     if not (module / "MODULE.bazel").exists():
         written += copy_tree("module", module, tokens)
+        written += write_files(
+            root, {module_path(directory) / LICENSE: (root / LICENSE).read_text()}
+        )
         written += copy_tree("examples", root / examples_path(directory), tokens)
         written += declarations.write(root)
         if release:

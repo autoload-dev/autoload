@@ -4,7 +4,8 @@ Regenerate the repository's generated files.
 | Generated files | Regenerated here | Checked |
 |---|---|---|
 | The root module's declarations of the add-on modules, addons.MODULE.bazel | from the modules of addons/ (tools/addons/declarations.py) | by Bazel itself, which fails to load a stale one (see there) |
-| The add-on modules' shared files, such as their .bazelrc and registry templates | from the add-on generator's template (tools/addons/new.py) | by the file lint's convention rule shared-module-files-as-generated |
+| The add-on modules' shared files, such as their .bazelrc, LICENSE and registry templates | from the add-on generator's template (tools/addons/new.py) | by the file lint's convention rule shared-module-files-as-generated |
+| The ruleset's LICENSE, a copy of the repository's | from the repository's LICENSE | by //tools/ci:released_modules_carry_the_license_test, with the add-on modules' |
 | The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | by every CI command, whose `--config=ci` sets `--lockfile_mode=error` (shared.bazelrc) |
 | The lock files of source-built engines, those the root module's `godot_engines.engine` tags name | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | by a `build_test` of the hub's `:pinned` beside each, which fails on a stale pin |
 
@@ -89,13 +90,28 @@ def unstaged_files() -> list[str]:
     return output.splitlines()
 
 
+def stale_ruleset_license(root: Path) -> dict[Path, str]:
+    """
+    The ruleset's copy of the repository's license if it differs, by path relative to root:
+    its release archive and package metadata carry it, as the add-on modules' do theirs.
+    """
+    text = (root / new.LICENSE).read_text()
+    copy = RULESET / new.LICENSE
+    return (
+        {}
+        if (root / copy).is_file() and (root / copy).read_text() == text
+        else {copy: text}
+    )
+
+
 def shared_files(paths: list[str]) -> int:
     """
-    Write the add-on modules' shared files that differ from what the generator writes. With
+    Write the add-on modules' shared files that differ from what the generator writes, and
+    the ruleset's license. With
     paths, as the pre-commit hook passes the staged files, a shared file that holds edits,
     staged among the paths or unstaged, is not overwritten: the run fails instead.
     """
-    stale = new.stale_shared_files(ROOT)
+    stale = new.stale_shared_files(ROOT) | stale_ruleset_license(ROOT)
     edited = set(paths) | set(unstaged_files()) if paths else set()
     if overwritten := sorted(p.as_posix() for p in stale if p.as_posix() in edited):
         print(

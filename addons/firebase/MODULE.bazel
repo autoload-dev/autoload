@@ -93,17 +93,9 @@ maven.artifact(
 
 use_repo(maven, "maven")
 
-# iOS: Firebase's official binary distribution, static XCFrameworks. No SwiftPM, so a
-# consuming root module needs no Swift package setup of its own.
-http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
-http_archive(
-    name = "firebase_ios",
-    build_file = "//third_party:firebase_ios.BUILD.bazel",
-    sha256 = "528356de371830b3bbd0c32dbb649c080c8d36a6ef3d057590739eff6deaefcb",
-    strip_prefix = "Firebase",
-    urls = ["https://github.com/firebase/firebase-ios-sdk/releases/download/13.2.0/Firebase.zip"],
-)
+# The third-party archives, each declared with its version in third_party/archives.bzl.
+archives = use_extension("//third_party:archives.bzl", "archives")
+use_repo(archives, "firebase_ios")
 
 # The repository's own tooling at its root, whose linters `aspect lint` applies here; consumers
 # never see it.

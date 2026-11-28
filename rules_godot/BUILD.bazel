@@ -14,9 +14,12 @@ package_metadata(
     ),
 )
 
+# The license with its text, the repository's, which aspect generate copies to the module's
+# root, where its release archive holds it.
 license(
     name = "license",
     kind = "@package_metadata//licenses/spdx:MPL-2.0",
+    text = "LICENSE",
 )
 
 # Gazelle (`bazel run //tools/gazelle:update` at the repository's root) generates a

@@ -59,7 +59,8 @@ first when an add-on needs rules that are not released yet.
 ## What the archive contains
 
 Every archive holds its module's directory at its root, under `<module>-X.Y.Z/`, with the
-repository's `LICENSE`. Each module's `.gitattributes` leaves every `tests/` directory out of
+module's `LICENSE`, the copy of the repository's that `aspect generate` writes and the
+module's package metadata names as its license's text. Each module's `.gitattributes` leaves every `tests/` directory out of
 it (release-archives-without-tests); the ruleset's also leaves out its guides in `docs/` and
 the link to the repository's Bazelisk wrapper. `bcr/` stays in, because the registry's
 presubmit builds the module's registry test module, `bcr/<name>/`, from the archive

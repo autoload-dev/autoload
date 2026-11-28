@@ -42,7 +42,9 @@ at the same commit until a release has what they need.
 Every module and the third-party libraries it builds in declare their identity (PURL) and
 license as [package metadata](https://github.com/bazel-contrib/supply-chain). SBOM and
 license tools such as `@supply_chain_tools` read it from an application's build graph, so a
-software bill of materials of a pack or an application lists the add-ons it contains. An
+software bill of materials of a pack or an application lists the add-ons it contains. Each
+license names its text, the module's `LICENSE` or the library's license file, for a license
+report to include. An
 application writes one as SPDX from its `godot_pack`:
 
 ```starlark

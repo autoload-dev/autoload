@@ -1,2 +1,3 @@
-# The build files and patches of third-party archives, which MODULE.bazel names. Repository
-# rules read a file by its label without a target, so this package exports none.
+# The module's third-party archives, declared in archives.bzl, and their build files and
+# patches, which repository rules read by label without a target, so this package exports
+# none.

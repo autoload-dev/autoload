@@ -30,25 +30,9 @@ register_toolchains("@dart_toolchains//:all")
 bazel_dep(name = "icu", version = "78.2.bcr.3")
 bazel_dep(name = "zlib", version = "1.4")
 
-# The Dart SDK's sources, which build the add-on's embedded runtime. Bazel loads the runtime's
-# source lists from .bzl copies of GN's *_sources.gni files. The patch drops the embedder API's
-# unused SecureSocket include, which needs BoringSSL, and corrects the macOS version the
-# runtime derives from Darwin 25 and newer, which it compares with the deployment target
-# before it starts an isolate.
-http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
-http_archive(
-    name = "dart_sdk_source",
-    build_file = "//third_party:dart_sdk.BUILD.bazel",
-    patch_cmds = [
-        "for f in $(find runtime -name '*_sources.gni'); do cp \"$f\" \"${f%.gni}.bzl\"; done",
-    ],
-    patch_strip = 1,
-    patches = ["//third_party:dart_sdk.patch"],
-    sha256 = "eb16c29569bc8ebe9e88add7387cbc2d7dcfb0e0edec855b8b758575c0a7c4cc",
-    strip_prefix = "sdk-3.14.1",
-    urls = ["https://github.com/dart-lang/sdk/archive/refs/tags/3.14.1.tar.gz"],
-)
+# The third-party archives, each declared with its version in third_party/archives.bzl.
+archives = use_extension("//third_party:archives.bzl", "archives")
+use_repo(archives, "dart_sdk_source")
 
 # The add-ons' own godot-cpp, with the classes their native code uses.
 godot_cpp_bindings = use_repo_rule(

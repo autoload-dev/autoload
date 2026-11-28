@@ -13,9 +13,13 @@ package_metadata(
     visibility = ["//visibility:public"],
 )
 
+# The license with its text, the repository's, which aspect generate copies to the module's
+# root, where its release archive holds it.
 license(
     name = "license",
     kind = "@package_metadata//licenses/spdx:MPL-2.0",
+    text = "LICENSE",
+    visibility = ["//visibility:public"],
 )
 
 # The module's declarations and Bazel settings with those of its registry test module, which
