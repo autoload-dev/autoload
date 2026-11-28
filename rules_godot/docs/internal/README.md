@@ -10,7 +10,7 @@ what covers the whole repository, such as verification, conventions and releasin
 |---|---|---|
 | [Design principles](principles.md) | Product goal, the principles that govern designs and reviews, and the design checks | Product direction or a principle changes |
 | [Capability matrix](capabilities.md) | The outcomes the ruleset supports, with stable IDs, limits and the guides that own them | Support changes |
-| [Architecture](architecture.md) | Ruleset layers and reuse boundaries | Implementation architecture changes |
+| [Architecture](architecture.md) | Ruleset layers and reuse boundaries, build tools and the progress messages of actions | Implementation architecture changes |
 | [Godot pipeline catalogue](godot-pipeline/README.md) | Inputs, outputs, operations, dependencies and their source evidence | Engine/plugin/toolchain semantics change |
 | [Android shell](android-shell.md) | How the Android shell follows Godot's Gradle export, its remaining differences and the review of a new Godot version | Changing the Android shell or pinning a Godot source |
 | [Export option inventory](export-option-inventory.md) | Reviewed disposition of every built-in exporter option and how to compare a new Godot version | Adding a Godot minor or changing owned/rejected export options |
