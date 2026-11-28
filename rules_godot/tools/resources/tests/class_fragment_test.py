@@ -51,6 +51,25 @@ class ClassFragmentTest(unittest.TestCase):
         self.assertTrue(header["is_tool"])
         self.assertEqual("C", header["class"])
 
+    def test_brackets_in_annotation_strings_nest_nothing(self) -> None:
+        header = script_header(
+            'class_name C\n@export_placeholder("(") var p := ""\n'
+            "class Inner extends Node:\n\tpass\n"
+        )
+        self.assertEqual({"Inner": {"path": None, "names": ["Node"]}}, header["inner"])
+
+    def test_an_icon_other_than_one_string_records_none(self) -> None:
+        # What Godot 4.7's editor scan records for these: the class, without an icon.
+        for icon in [
+            "@icon(",
+            '@icon("res://i.svg"',
+            '@icon("res://a.svg", "res://b.svg")',
+        ]:
+            with self.subTest(icon):
+                header = script_header("class_name C\n" + icon)
+                self.assertEqual("", header["icon"])
+                self.assertEqual("C", header["class"])
+
     def test_member_annotations_leave_the_class(self) -> None:
         header = script_header("extends Node\n@abstract func f()\n")
         self.assertFalse(header["is_abstract"])

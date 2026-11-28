@@ -207,6 +207,22 @@ class ScriptInterfaceTest(unittest.TestCase):
             ).split("\n", 1)[1],
         )
 
+    def test_a_backslash_string_continues_no_line(self) -> None:
+        self.assertEqual(
+            'const SEP = "\\\\"\nfunc f() -> int: return Engine.get_meta(&"")\n',
+            script_interface('const SEP = "\\\\"\nfunc f() -> int:\n\treturn 1\n').split(
+                "\n", 1
+            )[1],
+        )
+
+    def test_brackets_in_annotation_strings_nest_nothing(self) -> None:
+        self.assertEqual(
+            '@warning_ignore("(") func f(): pass\n',
+            script_interface('@warning_ignore("(") func f():\n\tprint(1)\n').split(
+                "\n", 1
+            )[1],
+        )
+
     def test_a_script_without_bodies_stays(self) -> None:
         source = "extends Node\nsignal done\nconst X = 1\n"
         self.assertEqual(source, script_interface(source))

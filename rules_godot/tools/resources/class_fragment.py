@@ -25,15 +25,16 @@ CACHE = ".godot/global_script_class_cache.cfg"
 Base = dict
 
 
-# How each bracket changes the nesting of arguments.
-_NESTING = {"(": 1, ")": -1}
+# How each bracket changes the nesting of arguments. The keys hold the token's category, so
+# a bracket inside a string nests nothing.
+_NESTING = {("punctuation", "("): 1, ("punctuation", ")"): -1}
 
 
 def skip_arguments(script: list, index: int) -> int:
     """Return the index after the parenthesized arguments that open at script[index]."""
     depth = 0
     for position in range(index, len(script)):
-        depth += _NESTING.get(script[position][1], 0)
+        depth += _NESTING.get(script[position][:2], 0)
         if not depth:
             return position + 1
     return len(script)
@@ -64,6 +65,19 @@ def _base(script: list, index: int) -> tuple[Base, int]:
     return {"path": path, "names": names}, index
 
 
+def _icon(script: list, index: int) -> str | None:
+    """
+    The path that the arguments opening at script[index] give an @icon, or None.
+
+    Godot's scan records an icon only for exactly one string, `("path")`. It records none
+    for other arguments or for arguments that the file cuts off before their `)`.
+    """
+    arguments = script[index + 1 : index + 3]
+    if len(arguments) < 2 or arguments[0][0] != "string":
+        return None
+    return arguments[0][1] if arguments[1][:2] == ("punctuation", ")") else None
+
+
 def _annotation(script: list, index: int) -> tuple[str, str | None, int]:
     """
     Read the annotation whose name is at script[index].
@@ -74,9 +88,7 @@ def _annotation(script: list, index: int) -> tuple[str, str | None, int]:
     index += 1
     if index >= len(script) or script[index][1] != "(":
         return name, None, index
-    icon = None
-    if name == "icon" and script[index + 1][0] == "string":
-        icon = script[index + 1][1]
+    icon = _icon(script, index) if name == "icon" else None
     return name, icon, skip_arguments(script, index)
 
 
