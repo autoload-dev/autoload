@@ -105,7 +105,7 @@ def _continues(line: list[Token], depth: int) -> bool:
     """
     if depth:
         return True
-    return is_punctuation(line[-1], "\\")
+    return bool(line) and is_punctuation(line[-1], "\\")
 
 
 def _logical_lines(tokens: list[Token]) -> list[list[Token]]:
@@ -183,7 +183,13 @@ def _ends_operand(token: Token) -> bool:
 
 
 def _starts_path(before: Token | None, separator: Token) -> bool:
-    """Whether the `%` after the token before it starts a node path."""
+    """
+    Whether the separator after the token before it starts a node path.
+
+    Only a `%` starts one, a unique node's. A `/` there is division.
+    """
+    if not is_punctuation(separator, "%"):
+        return False
     # A statement on a new line may start with a path. A `%` after a line break inside
     # brackets is taken for one too, which keeps the body.
     if before is None or before.line != separator.line:

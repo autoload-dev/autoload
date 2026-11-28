@@ -237,6 +237,10 @@ class ScriptInterfaceTest(unittest.TestCase):
             _stubs("func f() -> float:\n\treturn x[0] / await g()\n"),
         )
         self.assertEqual(
+            'func f() -> float: return await Engine.get_meta(&"")\n',
+            _stubs("func f() -> float:\n\treturn (x\n\t\t/ await g())\n"),
+        )
+        self.assertEqual(
             'func f(): await Engine.get_meta(&"")\n',
             _stubs("func f():\n\tprint({1: 2} % await g())\n"),
         )

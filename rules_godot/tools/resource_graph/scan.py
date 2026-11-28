@@ -199,7 +199,7 @@ def _index_script(scan: Scan, path: str, text: str) -> None:
     script = scan.scripts[path] = _code_tokens(text)
     scan.constants[path] = _literal_constants(script)
     for token, name in pairwise(script):
-        if token[:2] == ("identifier", "class_name") and name[0] == "identifier":
+        if is_identifier(token, "class_name") and name[0] == "identifier":
             scan.classes[name[1]].add(path)
 
 
