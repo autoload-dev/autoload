@@ -15,9 +15,13 @@ class Facts:
 
     def __init__(self, data: Mapping[str, Any]) -> None:
         self.options: dict[str, Any] = data["options"]
+        # Each option's default in Godot's exporter, as a new preset holds it.
+        self.option_defaults: dict[str, Any] = data.get("option_defaults", {})
         self.settings: dict[str, Any] = data["settings"]
         self.versions: dict[str, str] = data["versions"]
         self.name_translations: dict[str, str | None] = data["name_translations"]
+        # The image entries whose first source names a file Godot cannot load, with that file.
+        self.unreadable: dict[str, str] = data.get("unreadable", {})
 
     def option(self, name: str) -> Any:
         """Return an export option's value, its default when the pack sets none."""

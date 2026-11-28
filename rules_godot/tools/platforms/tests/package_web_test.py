@@ -25,6 +25,7 @@ _FACTS = {
         "html/focus_canvas_on_start": False,
         "html/export_icon": True,
         "html/head_include": '<meta name="theme-color" content="#242424">',
+        "progressive_web_app/enabled": False,
         "progressive_web_app/ensure_cross_origin_isolation_headers": True,
         "threads/godot_pool_size": 4,
         "threads/emscripten_pool_size": 8,
@@ -40,6 +41,31 @@ _FACTS = {
     "versions": {},
     "name_translations": {},
 }
+
+
+_ANALYSIS_DEFAULTS = {
+    "progressive_web_app/enabled": False,
+    "progressive_web_app/ensure_cross_origin_isolation_headers": True,
+}
+
+
+class AnalysisDefaultsTest(unittest.TestCase):
+    def test_godots_defaults_match_the_profile(self) -> None:
+        facts = Facts(_FACTS | {"option_defaults": dict(_ANALYSIS_DEFAULTS)})
+        package_web.check_analysis_defaults(facts, _ANALYSIS_DEFAULTS)
+
+    def test_a_changed_godot_default_fails_and_names_both(self) -> None:
+        changed = _ANALYSIS_DEFAULTS | {
+            "progressive_web_app/ensure_cross_origin_isolation_headers": False
+        }
+        with self.assertRaisesRegex(
+            SystemExit,
+            "progressive_web_app/ensure_cross_origin_isolation_headers: rules_godot's engine "
+            "profile has the default true, Godot's exporter false",
+        ):
+            package_web.check_analysis_defaults(
+                Facts(_FACTS | {"option_defaults": changed}), _ANALYSIS_DEFAULTS
+            )
 
 
 class PageTest(unittest.TestCase):
@@ -64,6 +90,54 @@ class PageTest(unittest.TestCase):
 
     def test_every_line_ends_with_a_newline_as_godots_replacement_writes_it(self) -> None:
         self.assertEqual("a\nb\n\n", package_web.page("a\nb\n", Facts(_FACTS), {}))
+
+
+_PWA_FACTS = _FACTS | {
+    "options": _FACTS["options"]
+    | {
+        "progressive_web_app/enabled": True,
+        "progressive_web_app/display": 2,
+        "progressive_web_app/orientation": 1,
+        "progressive_web_app/background_color": [0.0, 0.0, 1.0, 1.0],
+    },
+}
+
+
+class ProgressiveWebAppTest(unittest.TestCase):
+    def test_manifest_follows_the_options_as_godot_writes_it(self) -> None:
+        self.assertEqual(
+            '{"background_color":"#0000ff","display":"minimal-ui","icons":['
+            '{"sizes":"144x144","src":"index.144x144.png","type":"image/png"},'
+            '{"sizes":"180x180","src":"index.180x180.png","type":"image/png"},'
+            '{"sizes":"512x512","src":"index.512x512.png","type":"image/png"}],'
+            '"name":"Game","orientation":"landscape","start_url":"./index.html"}',
+            package_web.manifest(Facts(_PWA_FACTS)),
+        )
+
+    def test_an_icon_godot_cannot_load_fails_as_godots_export_does(self) -> None:
+        facts = Facts(_PWA_FACTS | {"unreadable": {"pwa_180.png": "res://icon.txt"}})
+        with self.assertRaisesRegex(
+            SystemExit,
+            'progressive_web_app/icon_180x180: Could not read file: "res://icon.txt".',
+        ):
+            package_web.check_pwa_icons(facts)
+        package_web.check_pwa_icons(Facts(_PWA_FACTS))
+
+    def test_cache_version_follows_the_cached_files(self) -> None:
+        site = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, site, True)
+        installed, on_demand = package_web._cached_files(Facts(_PWA_FACTS))
+        for name in installed + on_demand:
+            (site / name).write_text(name)
+        template = "const CACHE_VERSION = '___GODOT_VERSION___';"
+        first = package_web.service_worker(template, Facts(_PWA_FACTS), site)
+        self.assertEqual(
+            first, package_web.service_worker(template, Facts(_PWA_FACTS), site)
+        )
+        (site / "index.pck").write_text("another pack")
+        self.assertNotEqual(
+            first, package_web.service_worker(template, Facts(_PWA_FACTS), site)
+        )
 
 
 class ExportTest(unittest.TestCase):
@@ -92,6 +166,7 @@ class ExportTest(unittest.TestCase):
                 runtime=runtime,
                 pack=root / "pack.pck",
                 facts=root / "facts.json",
+                analysis_defaults="{}",
                 images=images,
                 shell=None,
                 output=root / "site",

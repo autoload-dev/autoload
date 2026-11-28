@@ -18,10 +18,12 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, fl
 	EditorInterface.get_editor_settings().set_setting("_export_preset_advanced_mode", true)
 	var clean: EditorExportPreset = get_export_platform().create_preset()
 	var options: Dictionary = {}
+	var option_defaults: Dictionary = {}
 	var option_types: Dictionary = {}
 	var actual_types: Dictionary = {}
 	for option_name: String in _option_names(preset, clean):
 		options[option_name] = _plain(preset.get(option_name))
+		option_defaults[option_name] = _plain(clean.get(option_name))
 		option_types[option_name] = type_string(typeof(clean.get(option_name)))
 		actual_types[option_name] = type_string(typeof(preset.get(option_name)))
 	var settings: Dictionary = _settings(preset)
@@ -30,6 +32,7 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, fl
 		"features": Array(features),
 		"editor_version": Engine.get_version_info()["string"],
 		"options": options,
+		"option_defaults": option_defaults,
 		"option_types": option_types,
 		"actual_option_types": actual_types,
 		"preset_settings": {"custom_features": preset.get_custom_features(), "script_export_mode": preset.get_script_export_mode()},
@@ -38,6 +41,7 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, fl
 		"name_translations": _name_translations(preset),
 		"rendered": images["rendered"],
 		"copied": images["copied"],
+		"unreadable": images["unreadable"],
 	}
 
 
@@ -74,18 +78,23 @@ func _settings(preset: EditorExportPreset) -> Dictionary:
 
 
 # Render the images the action lists into their outputs. The result names the
-# rendered entries and maps each entry that rules_godot copies to its source.
+# rendered entries, maps each entry that rules_godot copies to its source, and maps each
+# entry whose first source names a file Godot cannot load to that file.
 func _render_images(preset: EditorExportPreset) -> Dictionary:
 	var rendered: Array[String] = []
 	var copied: Dictionary = {}
+	var unreadable: Dictionary = {}
 	var loaded: Dictionary = {}
 	var saved: Dictionary = {}
 	var images: Array = action["images"]
 	for entry: Dictionary in images:
 		var source: String = _first_source(preset, entry, loaded)
+		var entry_name: String = entry["name"]
+		var named: String = _resolve(preset, entry["sources"][0])
+		if not named.is_empty() and named != source:
+			unreadable[entry_name] = named
 		if source.is_empty():
 			continue
-		var entry_name: String = entry["name"]
 		if _copies(entry, source):
 			# Godot uses a file of this type as it is; rules_godot copies it.
 			copied[entry_name] = source
@@ -93,7 +102,7 @@ func _render_images(preset: EditorExportPreset) -> Dictionary:
 		var image: Image = loaded[source]
 		if _render(preset, entry, source, image, saved):
 			rendered.append(entry_name)
-	return {"rendered": rendered, "copied": copied}
+	return {"rendered": rendered, "copied": copied, "unreadable": unreadable}
 
 
 # Return the first source of the entry that Godot can use, or "" if none works.
@@ -173,16 +182,35 @@ func _imported(path: String) -> Image:
 # that is saved already is copied instead; saved maps each rendering to its file.
 func _render(preset: EditorExportPreset, entry: Dictionary, source: String, image: Image, saved: Dictionary) -> bool:
 	var output: String = entry["output"]
-	var key: String = JSON.stringify([source, entry.get("size", 0), entry.get("interpolation"), entry.get("opaque", false), output.get_extension()])
+	var key: String = JSON.stringify([source, entry.get("size", 0), entry.get("interpolation"), entry.get("opaque", false), entry.get("shared_resizes"), output.get_extension()])
 	if saved.has(key):
 		var _made: Error = DirAccess.make_dir_recursive_absolute(output.get_base_dir())
 		var copied_from: String = saved[key]
 		return DirAccess.copy_absolute(copied_from, output) == OK
 	var copy: Image = image.duplicate()
+	if source.begins_with("editor_icon:"):
+		_resize_as_shared(preset, entry, copy)
 	if not _save(preset, entry, copy):
 		return false
 	saved[key] = output
 	return true
+
+
+# Resize an icon of the editor's theme as the exports before it resized the one image they
+# share: entry["shared_resizes"] lists [size, option] steps, each taken where its option,
+# such as the one that names an icon of that size instead, is empty; a step whose option
+# starts with "!" is taken where that option is set.
+func _resize_as_shared(preset: EditorExportPreset, entry: Dictionary, image: Image) -> void:
+	var steps: Array = entry.get("shared_resizes", [])
+	for step: Array in steps:
+		var option: String = step[1]
+		var value: Variant = preset.get(option.trim_prefix("!"))
+		var is_set: bool = value if value is bool else not str(value).strip_edges().is_empty()
+		if option.begins_with("!"):
+			is_set = not is_set
+		if not is_set:
+			var size: int = step[0]
+			image.resize(size, size, Image.INTERPOLATE_BILINEAR)
 
 
 func _save(preset: EditorExportPreset, entry: Dictionary, image: Image) -> bool:
