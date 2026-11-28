@@ -10,6 +10,7 @@ visibility is public.
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("//godot/engine/private:resolution.bzl", "EDITOR_TOOLCHAIN_TYPE", "RUNTIME_TOOLCHAIN_TYPE")
 load("//godot/extension/private/emscripten:sdk.bzl", "EXECUTION_PLATFORMS", "sdk_repository_name")
+load("//godot/extension/private/emscripten:unpinned.bzl", "emscripten_unpinned_toolchain")
 load("//godot/private/config:settings.bzl", "CPU_CONSTRAINTS", "ENVIRONMENT_CONSTRAINTS", "OPERATING_SYSTEM_CONSTRAINTS")
 
 visibility("public")
@@ -105,6 +106,41 @@ def _emscripten_toolchains_impl(name, visibility, version, engine, default_engin
                 visibility = visibility,
                 tags = tags,
             )
+
+def _unpinned_emscripten_toolchains_impl(name, visibility, engine_version, series, engine, default_engine, tags):
+    emscripten_unpinned_toolchain(
+        name = name + "_unpinned",
+        engine = engine,
+        series = series,
+        version = engine_version,
+        tags = tags,
+    )
+    native.toolchain(
+        name = name,
+        target_compatible_with = ["@platforms//os:emscripten", "@platforms//cpu:wasm32"],
+        target_settings = [_engine_setting(name, engine, default_engine, tags)],
+        toolchain = name + "_unpinned",
+        toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
+        visibility = visibility,
+        tags = tags,
+    )
+
+unpinned_emscripten_toolchains = macro(
+    doc = """
+    Register the web toolchain of an engine whose Godot minor has no pinned Emscripten release.
+
+    Declares the toolchain `<name>`, constrained to the web and the engine, whose analysis fails
+    and says that no Emscripten release is pinned for the engine's Godot minor.
+    """,
+    implementation = _unpinned_emscripten_toolchains_impl,
+    attrs = {
+        "engine_version": attr.string(doc = "The engine's version.", mandatory = True, configurable = False),
+        "series": attr.string(doc = "The engine's Godot minor.", mandatory = True, configurable = False),
+        "engine": attr.string(doc = "The engine's name; empty for an unnamed default engine.", configurable = False),
+        "default_engine": attr.bool(doc = "Whether the named engine is the default one.", configurable = False),
+        "tags": attr.string_list(doc = "Tags of every declared target.", configurable = False),
+    },
+)
 
 emscripten_toolchains = macro(
     doc = """

@@ -270,6 +270,9 @@ preview build their extensions in one invocation:
 | 4.7 | 4.0.20 |
 | 4.8 | 6.0.12 |
 
+An engine of another minor has no web toolchain; its web extensions fail with an error that
+names the engine and its minor.
+
 Bazel fetches an Emscripten SDK, 1.5 to 1.6 GB unpacked per version and execution platform,
 only when a build compiles an extension for the web; Linux and macOS execution platforms,
 x86_64 and ARM64, have one, so remote execution works. Every object of the extension,

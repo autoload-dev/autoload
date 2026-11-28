@@ -57,3 +57,8 @@ bzl_library(
     srcs = ["sdk.bzl"],
     deps = ["//godot/private/engine:profiles"],
 )
+
+bzl_library(
+    name = "unpinned",
+    srcs = ["unpinned.bzl"],
+)
