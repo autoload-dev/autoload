@@ -41,6 +41,8 @@ class IosAppTest(unittest.TestCase):
             "addon_notice.txt",
             # The extension's SDK resource bundle, which no platform_deps names.
             "hello_sdk_resources.bundle/hello_sdk_notice.txt",
+            # The same for an extension declared from its primitives.
+            "primitive_sdk_resources.bundle/primitive_sdk_notice.txt",
         ):
             self.assertTrue((self.app / path).exists(), path)
 

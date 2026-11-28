@@ -8,7 +8,7 @@ load("@rules_cc//cc:objc_library.bzl", "objc_library")
 load("@rules_swift//swift:swift_library.bzl", "swift_library")
 load("//godot:app.bzl", "godot_app")
 load("//godot:defs.bzl", "godot_addon", "godot_pack", "godot_project", "godot_resources")
-load("//godot/extension:defs.bzl", "godot_cc_extension", "godot_extension")
+load("//godot/extension:defs.bzl", "godot_cc_extension", "godot_extension", "godot_extension_library")
 
 # iOS applications whose platform libraries, resources and Info.plist fragments arrive
 # through an add-on and an extension of the pack, an add-on the project names, the
@@ -58,6 +58,44 @@ godot_cc_extension(
         "//godot:tool": [],
         "//conditions:default": [":hello_sdk"],
     }),
+)
+
+# The same shape declared from the primitives: the application bundles the resource bundle
+# of an SDK that the library's code uses, as it does for godot_cc_extension.
+apple_resource_bundle(
+    name = "primitive_sdk_resources",
+    resources = ["primitive_sdk_notice.txt"],
+    tags = ["manual"],
+)
+
+objc_library(
+    name = "primitive_sdk",
+    data = [":primitive_sdk_resources"],
+    tags = ["manual"],
+)
+
+cc_library(
+    name = "primitive_code",
+    srcs = ["hello.cc"],
+    tags = ["manual"],
+    deps = [":hello_support"] + select({
+        "//godot:tool": [],
+        "//conditions:default": [":primitive_sdk"],
+    }),
+)
+
+godot_extension_library(
+    name = "primitive_library",
+    entry_symbol = "rules_godot_library_init",
+    tags = ["manual"],
+    deps = [":primitive_code"],
+)
+
+godot_extension(
+    name = "primitive",
+    library = ":primitive_library",
+    resource_path = "native/primitive.gdextension",
+    tags = ["manual"],
 )
 
 # The add-on reaches the application through the pack's deps only.
@@ -110,6 +148,7 @@ godot_pack(
         ":addon",
         ":hello",
         ":main",
+        ":primitive",
     ],
 )
 

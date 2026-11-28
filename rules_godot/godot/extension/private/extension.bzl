@@ -5,7 +5,13 @@ declares both.
 """
 
 load("@rules_apple//apple:aspects.bzl", "framework_provider_aspect")
-load("@rules_apple//apple:providers.bzl", "AppleFrameworkImportInfo", "apple_provider")
+load("@rules_apple//apple:providers.bzl", "AppleFrameworkBundleInfo", "AppleFrameworkImportInfo", "AppleResourceInfo", "apple_provider")
+
+# rules_apple's resource aspect has no public export. The extension's iOS code target replays
+# it below the library, which the aspect does not follow by itself; the iOS application
+# regressions pin the contract.
+# buildifier: disable=bzl-visibility
+load("@rules_apple//apple/internal/aspects:resource_aspect.bzl", "apple_resource_aspect")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load("@rules_java//java/common:java_info.bzl", "JavaInfo")
 load("//godot/platforms/private:manifest_graph.bzl", "manifest_graph_aspect")
@@ -17,6 +23,7 @@ load("//godot/private:providers.bzl", "GodotExtensionInfo")
 load("//godot/private:symbols.bzl", "keep_debug_info")
 load("//godot/private:versions.bzl", "dotted_version", "require_supported_godot_minimum")
 load("//godot/private/config:transitions.bzl", "tool_transition")
+load(":extension_library.bzl", "GodotExtensionLibraryInfo")
 load(":library.bzl", "LIBRARY_ATTRS", "configured_library", "library_context")
 
 visibility(["//godot/extension"])
@@ -47,7 +54,31 @@ def _require_minimum_os_versions(minimum_os_versions):
         if not dotted_version(version):
             fail("minimum_os_versions[%s] must be a dotted numeric version; got %r" % (operating_system, version))
 
-def _write_descriptor(ctx, descriptor, configured):
+def _resolved_library(ctx, target):
+    """
+    Return the configured library's target, entry symbol and linked frameworks.
+
+    The frameworks are the AppleFrameworkImportInfo of those a godot_extension_library's
+    code links.
+
+    A godot_extension_library carries its entry symbol. A library from any other rule, or
+    a prebuilt file, carries none, so the extension names it.
+    """
+    if GodotExtensionLibraryInfo in target:
+        info = target[GodotExtensionLibraryInfo]
+        if ctx.attr.entry_symbol and ctx.attr.entry_symbol != info.entry_symbol:
+            fail("%s: the entry symbol %s differs from %s, the entry symbol of %s" % (
+                ctx.label,
+                ctx.attr.entry_symbol,
+                info.entry_symbol,
+                target.label,
+            ))
+        return info.library, info.entry_symbol, info.frameworks
+    if not ctx.attr.entry_symbol:
+        fail("%s: %s carries no entry symbol; name it with entry_symbol" % (ctx.label, target.label))
+    return target, ctx.attr.entry_symbol, []
+
+def _write_descriptor(ctx, descriptor, configured, entry_symbol):
     """Write the descriptor fragment with the entries of configured, a configured_library or None."""
     library_lines = []
     dependency_lines = []
@@ -64,7 +95,7 @@ def _write_descriptor(ctx, descriptor, configured):
         template = ctx.file._descriptor_template,
         output = descriptor,
         substitutions = {
-            "{ENTRY_SYMBOL}": json.encode(ctx.attr.entry_symbol),
+            "{ENTRY_SYMBOL}": json.encode(entry_symbol),
             "{COMPATIBILITY_MINIMUM}": json.encode(ctx.attr.compatibility_minimum),
             "{RELOADABLE}": "true" if ctx.attr.reloadable else "false",
             "{LIBRARIES}": "\n".join(library_lines),
@@ -75,7 +106,7 @@ def _write_descriptor(ctx, descriptor, configured):
         },
     )
 
-def _library_providers(ctx, library):
+def _library_providers(ctx, target, library, linked_frameworks):
     """Return the providers that expose the library's C++ graph and frameworks; none without a library."""
     if not library:
         return []
@@ -91,16 +122,12 @@ def _library_providers(ctx, library):
     # provider, so it carries the frameworks of the platform libraries too, and those the
     # library links, which the application embeds once however many extensions link them.
     if library.link_kind == "framework":
-        sources = (
-            ctx.attr.library +
-            getattr(ctx.attr, "deps", []) +
-            getattr(ctx.attr, "implementation_deps", [])
-        )
+        sources = [target] + getattr(ctx.attr, "deps", [])
         providers.append(apple_provider.merge_apple_framework_import_info([
             target[AppleFrameworkImportInfo]
             for target in sources
             if AppleFrameworkImportInfo in target
-        ]))
+        ] + linked_frameworks))
     return providers
 
 def _extension_impl(ctx):
@@ -113,15 +140,19 @@ def _extension_impl(ctx):
     prefix = directory + separator
     descriptor = ctx.actions.declare_file(ctx.label.name + ".gdextension")
     configured = None
+    target = None
+    entry_symbol = ctx.attr.entry_symbol
+    linked_frameworks = []
     resource_paths = {}
 
     # A label attribute with a Starlark transition arrives as a list, empty for None.
     if ctx.attr.library:
-        configured = configured_library(ctx, ctx.attr.library[0], prefix, library_context(ctx))
+        target, entry_symbol, linked_frameworks = _resolved_library(ctx, ctx.attr.library[0])
+        configured = configured_library(ctx, target, prefix, library_context(ctx))
         resource_paths = {resource: descriptor} | configured.resource_paths
     elif ctx.files.data:
         fail("%s: data needs a library in this configuration" % ctx.label)
-    _write_descriptor(ctx, descriptor, configured)
+    _write_descriptor(ctx, descriptor, configured, entry_symbol)
     library = configured.library if configured else None
     files = depset([descriptor] + resource_paths.values())
 
@@ -138,7 +169,7 @@ def _extension_impl(ctx):
         host_editor_resource_paths = host_tool_view[GodotExtensionInfo].runtime_resource_paths if host_tool_view else {},
         runtime_descriptor = descriptor,
         descriptor_path = resource,
-        entry_symbol = ctx.attr.entry_symbol,
+        entry_symbol = entry_symbol,
         platform_libraries = getattr(ctx.attr, "deps", []),
         platform_contributions = struct(infoplists = depset(getattr(ctx.files, "infoplists", []))),
     )
@@ -146,10 +177,11 @@ def _extension_impl(ctx):
     if tool_view:
         # Used by itself, the extension is an add-on of only that extension.
         providers.append(extension_addon(ctx.label, extension))
-    return providers + _library_providers(ctx, library)
+    return providers + _library_providers(ctx, target, library, linked_frameworks)
 
-_OWN_ATTRS = {
-    "library": attr.label(
+def _library_attr(aspects = []):
+    """The library attribute, with the aspects that follow it from the extension."""
+    return attr.label(
         doc = """
         The extension library of each configuration, varied with select() over platform
         constraints and @autoload_rules_godot//godot:debug, :release, :editor and :tool: a linked
@@ -167,7 +199,11 @@ _OWN_ATTRS = {
         """,
         allow_files = True,
         cfg = keep_debug_info,
-    ),
+        aspects = aspects,
+    )
+
+_OWN_ATTRS = {
+    "library": _library_attr(),
     "data": attr.label_list(
         doc = """
         Files the descriptor's [dependencies] lists beyond what the library's providers
@@ -189,8 +225,12 @@ _OWN_ATTRS = {
         """,
     ),
     "entry_symbol": attr.string(
-        doc = "Exported Godot initialization function, identical for every extension library.",
-        mandatory = True,
+        doc = """
+        Exported Godot initialization function, identical for every extension library.
+        Needed only when the library comes from another rule or is a prebuilt file; a
+        godot_extension_library passes its own on, and a value set beside one must equal
+        it.
+        """,
     ),
     "compatibility_minimum": attr.string(
         doc = """
@@ -227,6 +267,13 @@ _tool_view = rule(
 )
 
 _EXTENSION_ATTRS = _OWN_ATTRS | {
+    "implementation_deps": attr.label_list(
+        doc = """
+        The extension's iOS code target, which hands on the Apple resources of the library's
+        code; rules_apple's resource aspect follows this attribute from the application.
+        The extension macros set it.
+        """,
+    ),
     "infoplists": attr.label_list(
         doc = """
         Info.plist fragments iOS applications merge into their Info.plist for the
@@ -279,36 +326,44 @@ _extension = rule(
     cfg = reset_transition,
 )
 
-# rules_apple's resource aspect follows implementation_deps and collects the resources it
-# finds there; the extension itself reads only the frameworks the library links from it.
-source_extension = rule(
-    doc = "A godot_extension whose library godot_cc_extension builds.",
-    implementation = _extension_impl,
-    attrs = _EXTENSION_ATTRS | {
-        "implementation_deps": attr.label_list(
-            doc = """
-            The extension's cc_library on iOS, so that iOS applications bundle the Apple
-            resources of its native dependencies, such as a Swift package's resource
-            bundle, and embed the dynamic frameworks it links, transitive ones included.
-            The godot_cc_extension macro sets it; it adds nothing to linking.
-            """,
-            # The frameworks the extension's framework links, as deps collects them.
-            aspects = [framework_provider_aspect],
-            cfg = keep_debug_info,
-        ),
-    },
-    exec_groups = _EXEC_GROUPS,
-    cfg = reset_transition,
+def _bundled_resources(target):
+    """The resources an application bundles from target; a framework keeps its own."""
+    if AppleFrameworkBundleInfo in target:
+        return []
+    return [target[AppleResourceInfo]] if AppleResourceInfo in target else []
+
+def _ios_code_impl(ctx):
+    # A label attribute with a Starlark transition arrives as a list, empty for None.
+    return _bundled_resources(ctx.attr.library[0]) if ctx.attr.library else []
+
+# rules_apple's resource aspect follows neither an extension's library nor what it links,
+# and needs Apple tools wherever it applies. This target, compatible with iOS only, applies
+# it below the library; an iOS application's aspect reaches it through the extension's
+# implementation_deps and takes its AppleResourceInfo as it is.
+_ios_code = rule(
+    doc = "The Apple resources of an extension library's code, for iOS applications.",
+    implementation = _ios_code_impl,
+    attrs = {"library": _library_attr(aspects = [apple_resource_aspect])},
 )
+
+# The extension rule, for godot_cc_extension, which declares its parts itself.
+extension_rule = _extension
 
 _VIEW_ATTRS = ["library", "data", "resource_path", "entry_symbol", "compatibility_minimum", "reloadable", "testonly"]
 
-def tool_view_of(name, kwargs):
+def extension_parts(name, kwargs):
     """
-    Declare the tool view of extension name and return the attributes that reach it.
+    Declare the tool view and the iOS code target of an extension.
 
-    Both point at the same resource path: the extension's, by default
+    Both views point at the same resource path: the extension's, by default
     addons/<name>/<name>.gdextension.
+
+    Args:
+        name: The extension's name.
+        kwargs: The extension's attributes.
+
+    Returns:
+        The extension's attributes with those that name the tool view and the iOS code target.
     """
     kwargs = kwargs | {"resource_path": kwargs.get("resource_path") or "addons/%s/%s.gdextension" % (name, name)}
     _tool_view(
@@ -318,14 +373,29 @@ def tool_view_of(name, kwargs):
         tags = (kwargs.get("tags") or []) + ["manual"],
         **{key: value for key, value in kwargs.items() if key in _VIEW_ATTRS}
     )
-    return kwargs | {"tool_view": ":" + name + ".tool", "host_tool_view": ":" + name + ".tool"}
+    _ios_code(
+        name = name + ".ios_code",
+        library = kwargs.get("library"),
+        visibility = CALLER_PACKAGE,
+        tags = (kwargs.get("tags") or []) + ["manual"],
+        testonly = kwargs.get("testonly"),
+        target_compatible_with = ["@platforms//os:ios"],
+    )
+    return kwargs | {
+        "tool_view": ":" + name + ".tool",
+        "host_tool_view": ":" + name + ".tool",
+        "implementation_deps": select({
+            Label("@platforms//os:ios"): [":" + name + ".ios_code"],
+            "//conditions:default": [],
+        }),
+    }
 
 def _godot_extension_impl(name, visibility, platform_deps, **kwargs):
     _extension(
         name = name,
         visibility = visibility,
         deps = platform_deps,
-        **tool_view_of(name, kwargs)
+        **extension_parts(name, kwargs)
     )
 
 godot_extension = macro(
@@ -337,8 +407,10 @@ godot_extension = macro(
     feature tags from the configuration, the link kind from the library's providers and
     its runtime dependencies from the library and data. Each configuration writes a
     descriptor fragment with its one library entry; packs merge the fragments of their
-    platform slices. The extension takes the library as another rule linked it, in any
-    language, and links nothing itself; godot_cc_extension is the C++ shorthand. Editor
+    platform slices. The extension links nothing itself: it takes a
+    godot_extension_library, or a library as another rule linked it, in any language, or
+    a prebuilt file; godot_cc_extension is the C++ shorthand that declares the code, its
+    library and the extension. Editor
     actions and the host editor load the library of the tool configuration, where
     @autoload_rules_godot//godot:tool and :editor match; a select() with a branch for each
     execution platform's operating system needs no tool branch. Platform libraries that
