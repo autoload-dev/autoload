@@ -15,6 +15,7 @@ class SharedModuleFilesTest(RepositoryTest):
     def setUp(self) -> None:
         super().setUp()
         self.write(".bazelversion", "9.3.0\n")
+        self.write("LICENSE", "license\n")
         self.write(
             ".bcr/rules_godot/metadata.template.json",
             (ROOT / ".bcr/rules_godot/metadata.template.json").read_text(),

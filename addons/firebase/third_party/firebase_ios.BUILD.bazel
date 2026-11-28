@@ -2,8 +2,8 @@
 # XCFrameworks that product needs, the core's among them. @autoload_firebase//ios links them
 # into one dynamic framework per product.
 load("@package_metadata//licenses/rules:license.bzl", "license")
-load("@package_metadata//purl:purl.bzl", "purl")
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
+load("@autoload_firebase//third_party:archives.bzl", "ARCHIVES")
 load("@rules_apple//apple:apple.bzl", "apple_static_xcframework_import")
 
 package(
@@ -12,18 +12,12 @@ package(
 )
 
 # The archive's identity and license, for the SBOM and license tools that read package
-# metadata. Keep the version in step with the archive's URL in MODULE.bazel.
+# metadata. Its package URL comes from the archive's declaration in archives.bzl, like its
+# URLs.
 package_metadata(
     name = "package_metadata",
     attributes = [":license"],
-    purl = (
-        purl.builder()
-            .type("github")
-            .namespace("firebase")
-            .name("firebase-ios-sdk")
-            .version("13.2.0")
-            .build()
-    ),
+    purl = ARCHIVES["firebase_ios"].purl,
     visibility = ["//visibility:public"],
 )
 

@@ -36,25 +36,31 @@ godot_cpp_bindings = repository_rule(
     """,
     implementation = godot_cpp_bindings_impl,
     attrs = {
+        "version": attr.string(
+            doc = """
+            The godot-cpp tag or commit the archive holds. It replaces `{version}` in urls
+            and strip_prefix and is the version of the package metadata's package URL.
+            """,
+            default = GODOT_CPP_COMMIT,
+        ),
         "urls": attr.string_list(
-            doc = "Ordered download URLs for the same checksum-pinned upstream archive.",
-            default = [
-                "https://codeload.github.com/godotengine/godot-cpp/tar.gz/" + GODOT_CPP_COMMIT,
-            ],
+            doc = """
+            Ordered download URLs for the same checksum-pinned archive. Each must contain
+            `{version}`, which the version replaces, so that the package metadata names the
+            version downloaded.
+            """,
+            default = ["https://codeload.github.com/godotengine/godot-cpp/tar.gz/{version}"],
         ),
         "sha256": attr.string(
-            doc = """
-            SHA-256 digest of the archive; update together with urls when using a custom
-            version.
-            """,
+            doc = "SHA-256 digest of the archive; update together with version.",
             default = GODOT_CPP_SHA256,
         ),
         "strip_prefix": attr.string(
             doc = """
             Directory prefix removed from paths; for archives this must match their
-            top-level directory.
+            top-level directory. The version replaces `{version}` in it.
             """,
-            default = "godot-cpp-" + GODOT_CPP_COMMIT,
+            default = "godot-cpp-{version}",
         ),
         "patches": attr.label_list(
             doc = """

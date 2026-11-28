@@ -1,0 +1,10 @@
+# Each archive of third_party/archives.bzl is fetched from URLs that carry the version of
+# its package URL.
+load("//third_party:archives.bzl", "ARCHIVES")
+load(":archive_versions_test.bzl", "archive_versions_test")
+
+archive_versions_test(
+    name = "archive_versions_test",
+    size = "small",
+    archives = ARCHIVES,
+)

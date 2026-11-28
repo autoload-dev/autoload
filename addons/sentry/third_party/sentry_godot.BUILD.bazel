@@ -2,8 +2,8 @@
 # @autoload_sentry//sentry assembles into the add-on. Every library comes in a debug and a
 # release build.
 load("@package_metadata//licenses/rules:license.bzl", "license")
-load("@package_metadata//purl:purl.bzl", "purl")
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
+load("@autoload_sentry//third_party:archives.bzl", "ARCHIVES")
 load("@rules_android//rules:rules.bzl", "aar_import")
 load("@rules_apple//apple:apple.bzl", "apple_dynamic_xcframework_import")
 load("@rules_cc//cc:cc_import.bzl", "cc_import")
@@ -14,18 +14,12 @@ package(
 )
 
 # The archive's identity and license, for the SBOM and license tools that read package
-# metadata. Keep the version in step with the archive's URL in MODULE.bazel.
+# metadata. Its package URL comes from the archive's declaration in archives.bzl, like its
+# URLs.
 package_metadata(
     name = "package_metadata",
     attributes = [":license"],
-    purl = (
-        purl.builder()
-            .type("github")
-            .namespace("getsentry")
-            .name("sentry-godot")
-            .version("2.5.1")
-            .build()
-    ),
+    purl = ARCHIVES["sentry_godot"].purl,
     visibility = ["//visibility:public"],
 )
 

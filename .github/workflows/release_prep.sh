@@ -13,9 +13,9 @@ PREFIX="${NAME}-${VERSION}"
 REPOSITORY="${GITHUB_REPOSITORY:-autoload-dev/autoload}"
 ARCHIVE="${PREFIX}.tar.gz"
 
-# The archive holds the module's directory at its root and the repository's license. The
-# module's .gitattributes keeps development-only directories out of it.
-git archive --format=tar --prefix="${PREFIX}/" --add-file=LICENSE "${TAG}:${ROOT}" |
+# The archive holds the module's directory at its root, with its copy of the repository's
+# license. The module's .gitattributes keeps development-only directories out of it.
+git archive --format=tar --prefix="${PREFIX}/" "${TAG}:${ROOT}" |
     gzip >"$ARCHIVE"
 
 # The ruleset's API documentation and the setup its release notes show.

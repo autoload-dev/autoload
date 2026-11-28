@@ -56,3 +56,7 @@ class CommonContentTest(unittest.TestCase):
         self.assertEqual(
             '[configuration]\nentry_symbol="e"\n\n[libraries]\na="a"\nz="z"\n', merged
         )
+
+
+if __name__ == "__main__":
+    unittest.main()

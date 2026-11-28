@@ -47,8 +47,8 @@ py_test(
     size = "medium",
     srcs = ["tests/runtime_input_test.py"],
     args = [
-        "$(rlocationpath :pack)",
-        "$(rlocationpath tests/runtime_input.txt)",
+        "$(rootpath :pack)",
+        "$(rootpath tests/runtime_input.txt)",
     ],
     data = [
         "tests/runtime_input.txt",

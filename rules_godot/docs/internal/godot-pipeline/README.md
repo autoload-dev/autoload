@@ -14,7 +14,7 @@ change.
 - Repository baseline: `506d045ec401effdcb93986dfa0ca2064dbfd78a`.
 - Godot: 4.7.2-stable, commit `ed1daf0bf001b61586d9930840f2f1394092c079`.
   A cached official macOS executable reported `4.7.2.stable.official.ed1daf0bf`.
-- Bazel: 9.3.0. GdUnit: `0127a55f4543dfc24746f6e5c7ba6f94105d51f2`.
+- Bazel: 9.3.0. GdUnit: 6.2.2, commit `0127a55f4543dfc24746f6e5c7ba6f94105d51f2`.
 - Application and toolchain boundaries: the Linux, macOS, Android and iOS workflows,
   rules_android 0.8.0, rules_apple 5.3.1, and the engine, toolchain and engine profile
   declarations.

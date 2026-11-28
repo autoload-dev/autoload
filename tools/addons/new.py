@@ -11,8 +11,10 @@ tools/addons/template/addon/ to addons/<module>/<addon>/ for the add-on. The add
 named like the module unless --addon names it. In these trees, `{{token}}` in file names and
 contents stands for a name derived from the two, and every file name ends in `.tmpl`. The
 written files belong to the module from then on, but for its shared files: the settings every
-module keeps as the generator writes them, which `aspect generate` writes again for every
-module and the file lint compares (`stale_shared_files`).
+module keeps as the generator writes them, its copy of the repository's LICENSE and, for a
+module with third_party/archives.bzl, the archives' helper and the test of their versions.
+`aspect generate` writes them again for every module and the file lint compares them
+(`stale_shared_files`).
 
 `addons/selftest` with `examples/addons/selftest` (both gitignored) is the self-test's module
 (`aspect work addon-template`, tools/addons/selftest.py): it is regenerated from scratch
@@ -134,8 +136,22 @@ SHARED_MODULE_FILES = frozenset(
 )
 
 
+# The repository's license. Every module carries a copy at its root, which its package
+# metadata names as the license's text.
+LICENSE = "LICENSE"
+
+
 def bazel_version(root: Path) -> str:
     return (root / ".bazelversion").read_text().strip()
+
+
+def stale(root: Path, files: dict[Path, str]) -> dict[Path, str]:
+    """Those of the files, by path relative to root, that are missing or differ."""
+    return {
+        path: text
+        for path, text in files.items()
+        if not (root / path).is_file() or (root / path).read_text() != text
+    }
 
 
 def write_files(root: Path, files: dict[Path, str]) -> list[Path]:
@@ -144,12 +160,11 @@ def write_files(root: Path, files: dict[Path, str]) -> list[Path]:
     their modification times, which Git and Bazel read.
     """
     written = []
-    for path, text in files.items():
+    for path, text in stale(root, files).items():
         target = root / path
-        if not target.is_file() or target.read_text() != text:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(text)
-            written.append(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text)
+        written.append(target)
     return written
 
 
@@ -171,11 +186,17 @@ def registry_files(directory: str, root: Path, tokens: dict[str, str]) -> dict[P
 REGISTRY_FILES = (*(relative for _, relative in template_files("bcr")), registry.METADATA)
 
 
+# A module that has this file, which declares its third-party archives, also gets the
+# template tree archives/: the helper the file loads and the test of the versions.
+ARCHIVES = "third_party/archives.bzl"
+
+
 def shared_files(directory: str, root: Path = ROOT) -> dict[Path, str]:
     """
     What the generator writes to the shared files of the module addons/<directory>, by path
-    relative to root; the registry templates only for a module that is released, which has
-    them.
+    relative to root: the repository's license; the helper of third-party archives and its
+    test, for a module that declares archives; and the registry templates, for a module that
+    is released.
     """
     tokens = Names(directory).tokens(bazel_version(root))
     module = module_path(directory)
@@ -184,6 +205,12 @@ def shared_files(directory: str, root: Path = ROOT) -> dict[Path, str]:
         for path, relative in template_files("module")
         if relative in SHARED_MODULE_FILES
     }
+    files[module / LICENSE] = (root / LICENSE).read_text()
+    if (root / module / ARCHIVES).is_file():
+        files.update(
+            (module / relative, render(path.read_text(), tokens))
+            for path, relative in template_files("archives")
+        )
     if (root / registry.templates_directory(directory)).is_dir():
         files.update(registry_files(directory, root, tokens))
     return files
@@ -194,13 +221,10 @@ def stale_shared_files(root: Path = ROOT) -> dict[Path, str]:
     The shared files of every add-on module that differ from what the generator writes, by
     path relative to root, with what it writes.
     """
-    stale = {}
+    files = {}
     for module in addon_modules(root):
-        for path, text in shared_files(Path(module).name, root).items():
-            target = root / path
-            if not target.is_file() or target.read_text() != text:
-                stale[path] = text
-    return stale
+        files.update(shared_files(Path(module).name, root))
+    return stale(root, files)
 
 
 # ==== Generator ===============================================================
@@ -222,6 +246,8 @@ def generate(
     written = []
     if not (module / "MODULE.bazel").exists():
         written += copy_tree("module", module, tokens)
+        # The license and the other shared files that the module tree does not hold.
+        written += write_files(root, shared_files(directory, root))
         written += copy_tree("examples", root / examples_path(directory), tokens)
         written += declarations.write(root)
         if release:

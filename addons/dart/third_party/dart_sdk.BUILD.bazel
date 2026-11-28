@@ -8,8 +8,8 @@
 
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@package_metadata//licenses/rules:license.bzl", "license")
-load("@package_metadata//purl:purl.bzl", "purl")
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
+load("@autoload_dart//third_party:archives.bzl", "ARCHIVES")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:objc_library.bzl", "objc_library")
 load("@rules_python//python:py_binary.bzl", "py_binary")
@@ -38,18 +38,12 @@ package(
 )
 
 # The archive's identity and license, for the SBOM and license tools that read package
-# metadata. Keep the version in step with the archive's URL in MODULE.bazel.
+# metadata. Its package URL comes from the archive's declaration in archives.bzl, like its
+# URLs.
 package_metadata(
     name = "package_metadata",
     attributes = [":license"],
-    purl = (
-        purl.builder()
-            .type("github")
-            .namespace("dart-lang")
-            .name("sdk")
-            .version("3.14.1")
-            .build()
-    ),
+    purl = ARCHIVES["dart_sdk_source"].purl,
     visibility = ["//visibility:public"],
 )
 

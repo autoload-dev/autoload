@@ -206,7 +206,11 @@ class AddonModuleTest(RepositoryTest):
 
     def setUp(self) -> None:
         super().setUp()
-        for name in (".bazelversion", ".bcr/rules_godot/metadata.template.json"):
+        for name in (
+            ".bazelversion",
+            "LICENSE",
+            ".bcr/rules_godot/metadata.template.json",
+        ):
             self.write(name, (ROOT / name).read_text())
 
     def module(self, directory: str, addon: str | None = None) -> None:

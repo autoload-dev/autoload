@@ -41,9 +41,10 @@ def _api(major = 4, minor = 7):
 def _bindings(*, api = None, api_path = _API_PATH, execute = {}, **overrides):
     ctx = mocks.repository_ctx(
         attr = {
-            "urls": ["https://codeload.github.com/godotengine/godot-cpp/tar.gz/" + GODOT_CPP_COMMIT],
+            "version": GODOT_CPP_COMMIT,
+            "urls": ["https://codeload.github.com/godotengine/godot-cpp/tar.gz/{version}"],
             "sha256": GODOT_CPP_SHA256,
-            "strip_prefix": "godot-cpp-" + GODOT_CPP_COMMIT,
+            "strip_prefix": "godot-cpp-{version}",
             "patches": [],
             "patch_strip": 1,
             "api_path": api_path,
@@ -109,6 +110,32 @@ def _test_api_path_selects_the_api(env):
     env.expect.that_str(substitutions["{OUTS}"]).contains('"gen/src/variant/string.cpp",')
     for builtin in ["int", "vector2"]:
         env.expect.where(builtin = builtin).that_bool("variant/%s.hpp" % builtin in substitutions["{OUTS}"]).equals(False)
+
+def _test_version_names_archive_and_package(env):
+    ctx, errors = _bindings(version = "10.1.0-stable", sha256 = "ab" * 32)
+    env.expect.that_collection(errors).contains_exactly([])
+    download = mocks.calls(ctx, "download_and_extract")[0]
+    env.expect.that_collection(download.url).contains_exactly([
+        "https://codeload.github.com/godotengine/godot-cpp/tar.gz/10.1.0-stable",
+    ])
+    env.expect.that_str(download.stripPrefix).equals("godot-cpp-10.1.0-stable")
+    metadata = [
+        call
+        for call in mocks.calls(ctx, "file")
+        if call.path == "_package_metadata/BUILD.bazel"
+    ]
+    env.expect.that_str(metadata[0].content).contains(
+        repr("pkg:generic/godot-cpp@10.1.0-stable?checksum=sha256:" + "ab" * 32),
+    )
+
+def _test_url_without_version_fails(env):
+    url = "https://example.com/godot-cpp.tar.gz"
+    ctx, errors = _bindings(urls = [url])
+    env.expect.that_collection(errors).contains_exactly([
+        "godot_cpp_bindings: the URL %s does not name {version}" % url,
+    ])
+    downloads = mocks.calls(ctx, "download_and_extract")
+    env.expect.that_collection(downloads).contains_exactly([])
 
 def _test_bits_and_precision_reach_the_bindings(env):
     ctx, errors = _bindings(bits = "32", precision = "double")
@@ -203,6 +230,8 @@ def godot_cpp_bindings_test_suite(name):
         name = name,
         basic_tests = [
             _test_api_path_selects_the_api,
+            _test_version_names_archive_and_package,
+            _test_url_without_version_fails,
             _test_bits_and_precision_reach_the_bindings,
             _test_debug_features_define_debug_macros,
             _test_enabled_classes_keep_ancestors,

@@ -53,7 +53,6 @@ def archive(directory: str, ref: str = "HEAD") -> list[str]:
         "archive",
         "--format=tar",
         f"--prefix={PREFIX}/",
-        "--add-file=LICENSE",
         f"{ref}:{directory}",
     ]
 

@@ -46,6 +46,7 @@ py_library(
     # The files a repository test root starts from.
     data = [
         "//:.bazelversion",
+        "//:LICENSE",
         "//:bcr_metadata",
     ],
     visibility = [

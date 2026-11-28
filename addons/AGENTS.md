@@ -27,16 +27,23 @@ The conventions check enforces it (the add-on module rules of
 [conventions.md](../docs/internal/conventions.md)):
 
 - `MODULE.bazel`, `README.md`, `REPO.bazel`, `BUILD.bazel`, `.gitignore`, `.gitattributes`,
-  `.bazelversion`.
+  `.bazelversion` and `LICENSE`, a shared copy of the repository's.
 - `.bazelrc` imports [module.bazelrc](module.bazelrc) and adds only its BuildBuddy tag.
   Settings for all modules go in that file.
 - Package metadata, which SBOM and license tools read from an application's build: the
   shared `REPO.bazel` gives every target of the module the `package_metadata` of its shared
-  root `BUILD.bazel`, the module's PURL and license. The build file of a third-party archive in
-  `third_party/` declares the archive's own: a PURL built with `purl.builder()`, whose version
-  follows the archive's URL, and the license of the project with its text from the archive,
+  root `BUILD.bazel`, the module's PURL and its license, whose text is the module's
+  `LICENSE`. `//tools/ci:released_modules_carry_the_license_test` checks that it equals the
+  repository's.
+  The build file of a third-party archive in `third_party/` declares the archive's own: the
+  PURL of its declaration, and the license of the project with its text from the archive,
   not the licenses of the components a release bundles. `e2e/addons/sqlite/sbom/` checks that
   an SBOM of a pack names a module and the registry module it builds in.
+- Third-party archives: `third_party/archives.bzl` declares each with `github_archive` and
+  exports the extension `archives`, which MODULE.bazel uses to fetch them. Each archive's
+  version is written once; its URLs and its PURL are built from it. A module that declares
+  archives gets the shared `third_party/archive.bzl`, the helper, and `tests/archives/`,
+  which tests that the URLs and the PURL carry the version.
 - `.bcr/addons/<module>/`, outside the module: the templates publish-to-bcr reads for a
   release, `metadata.template.json`, `source.template.json` and `presubmit.yml`, the
   registry's checks of a release. They are shared files: change them in the template.
