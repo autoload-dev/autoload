@@ -1,0 +1,124 @@
+web_test_runner: godot args ["--audio-driver", "Dummy", "--autoload-test", "--", "-a", "res://suites", "--resolve-remaps"]
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
+Build configuration: Emscripten 4.0.20, single-threaded, no GDExtension support.
+web_run: features web=true debug=true; display=web; GdUnit args ["GdUnitCmdTool.gd", "--ignoreHeadlessMode", "-c", "-rd", "user://gdunit", "-rc", "1", "-a", "res://suites"]
+[2J[H
+--------------------------------------------------------------------------------------------------
+GdUnit4 Comandline Tool
+--------------------------------------------------------------------------------------------------
+Disabled fail fast!
+Set write reports to /userfs/godot/app_userdata/gdunit web experiment/gdunit
+Set report history count to 1
+test_deliberate_failure
+SCRIPT ERROR: Assertion failed: Precondition: The parameter 'source_file' is not set
+   at: from (res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99)
+   GDScript backtrace (most recent call first):
+       [0] from (res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99)
+       [1] discover_tests_from_gd_script (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:140)
+       [2] discover_tests (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:114)
+       [3] discover_tests (res://web_run.gd:36)
+       [4] init_gd_unit (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:382)
+       [5] init_runner (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:117)
+       [6] _process (res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd:120)
+test_passes_beside_failure
+SCRIPT ERROR: Assertion failed: Precondition: The parameter 'source_file' is not set
+   at: from (res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99)
+   GDScript backtrace (most recent call first):
+       [0] from (res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99)
+       [1] discover_tests_from_gd_script (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:140)
+       [2] discover_tests (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:114)
+       [3] discover_tests (res://web_run.gd:36)
+       [4] init_gd_unit (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:382)
+       [5] init_runner (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:117)
+       [6] _process (res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd:120)
+test_mock_script_class
+SCRIPT ERROR: Assertion failed: Precondition: The parameter 'source_file' is not set
+   at: from (res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99)
+   GDScript backtrace (most recent call first):
+       [0] from (res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99)
+       [1] discover_tests_from_gd_script (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:140)
+       [2] discover_tests (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:114)
+       [3] discover_tests (res://web_run.gd:36)
+       [4] init_gd_unit (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:382)
+       [5] init_runner (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:117)
+       [6] _process (res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd:120)
+test_spy_script_class
+SCRIPT ERROR: Assertion failed: Precondition: The parameter 'source_file' is not set
+   at: from (res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99)
+   GDScript backtrace (most recent call first):
+       [0] from (res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99)
+       [1] discover_tests_from_gd_script (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:140)
+       [2] discover_tests (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:114)
+       [3] discover_tests (res://web_run.gd:36)
+       [4] init_gd_unit (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:382)
+       [5] init_runner (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:117)
+       [6] _process (res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd:120)
+test_addition
+SCRIPT ERROR: Assertion failed: Precondition: The parameter 'source_file' is not set
+   at: from (res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99)
+   GDScript backtrace (most recent call first):
+       [0] from (res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99)
+       [1] discover_tests_from_gd_script (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:140)
+       [2] discover_tests (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:114)
+       [3] discover_tests (res://web_run.gd:36)
+       [4] init_gd_unit (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:382)
+       [5] init_runner (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:117)
+       [6] _process (res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd:120)
+test_platform_is_web
+SCRIPT ERROR: Assertion failed: Precondition: The parameter 'source_file' is not set
+   at: from (res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99)
+   GDScript backtrace (most recent call first):
+       [0] from (res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99)
+       [1] discover_tests_from_gd_script (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:140)
+       [2] discover_tests (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:114)
+       [3] discover_tests (res://web_run.gd:36)
+       [4] init_gd_unit (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:382)
+       [5] init_runner (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:117)
+       [6] _process (res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd:120)
+test_expected_engine_error
+SCRIPT ERROR: Assertion failed: Precondition: The parameter 'source_file' is not set
+   at: from (res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99)
+   GDScript backtrace (most recent call first):
+       [0] from (res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99)
+       [1] discover_tests_from_gd_script (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:140)
+       [2] discover_tests (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:114)
+       [3] discover_tests (res://web_run.gd:36)
+       [4] init_gd_unit (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:382)
+       [5] init_runner (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:117)
+       [6] _process (res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd:120)
+SCRIPT ERROR: Trying to assign value of type 'Nil' to a variable of type 'String'.
+   at: create (res://addons/gdUnit4/src/core/parameters/GdParameterSetResolverFactory.gd:19)
+   GDScript backtrace (most recent call first):
+       [0] create (res://addons/gdUnit4/src/core/parameters/GdParameterSetResolverFactory.gd:19)
+       [1] discover_parameterised_tests (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:153)
+       [2] discover_tests_from_gd_script (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:138)
+       [3] discover_tests (res://addons/gdUnit4/src/core/discovery/GdUnitTestDiscoverer.gd:114)
+       [4] discover_tests (res://web_run.gd:36)
+       [5] init_gd_unit (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:382)
+       [6] init_runner (res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd:117)
+       [7] _process (res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd:120)
+web_run: discovered 7 tests through ResourceLoader
+Script errors were detected during test discovery!
+  Assertion failed: Precondition: The parameter 'source_file' is not set
+	at res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99
+  Assertion failed: Precondition: The parameter 'source_file' is not set
+	at res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99
+  Assertion failed: Precondition: The parameter 'source_file' is not set
+	at res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99
+  Assertion failed: Precondition: The parameter 'source_file' is not set
+	at res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99
+  Assertion failed: Precondition: The parameter 'source_file' is not set
+	at res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99
+  Assertion failed: Precondition: The parameter 'source_file' is not set
+	at res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99
+  Assertion failed: Precondition: The parameter 'source_file' is not set
+	at res://addons/gdUnit4/src/core/discovery/GdUnitTestCase.gd:99
+  Trying to assign value of type 'Nil' to a variable of type 'String'.
+	at res://addons/gdUnit4/src/core/parameters/GdParameterSetResolverFactory.gd:19
+Abnormal exit with 105
+web_run: GdUnit exit 105; reports in /userfs/godot/app_userdata/gdunit web experiment/gdunit; JUnit at 
+web_run: GdUnit wrote no JUnit report
+Run dispose test resources
+web_test_runner: timings {"chrome_to_first_request_s": 0.68, "page_marks_ms": {"script": 0, "loaded": 230, "main": 867, "exit": 1685}, "total_s": 2.739, "finished": true, "exit": "105"}
+web_test_runner: report channels []

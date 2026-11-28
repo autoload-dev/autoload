@@ -1,0 +1,230 @@
+[
+ {
+  "matrix": "pwa-th-no-headers-swreload",
+  "export": "th_pwa_release",
+  "case": "frames60_c42",
+  "expected": 42,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   42
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 150,
+   "median": 156,
+   "p90": 160,
+   "max": 160
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 474,
+   "median": 479,
+   "p90": 490,
+   "max": 545
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 1036,
+   "median": 1047,
+   "p90": 1062,
+   "max": 1113
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 1273,
+   "median": 1284,
+   "p90": 1315,
+   "max": 1355
+  },
+  "page_errors": [
+   "Error while registering service worker: Error: Service worker already exists."
+  ],
+  "loads": [
+   3
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   false,
+   true
+  ]
+ },
+ {
+  "matrix": "pwa-th-no-headers-swreload",
+  "export": "th_pwa_release",
+  "case": "ready_dummyaudio_c5",
+  "expected": 5,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   5
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 151,
+   "median": 157,
+   "p90": 160,
+   "max": 162
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 376,
+   "median": 382,
+   "p90": 387,
+   "max": 393
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 459,
+   "median": 465,
+   "p90": 472,
+   "max": 476
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 706,
+   "median": 710,
+   "p90": 722,
+   "max": 723
+  },
+  "page_errors": [
+   "Error while registering service worker: Error: Service worker already exists."
+  ],
+  "loads": [
+   3
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   false,
+   true
+  ]
+ },
+ {
+  "matrix": "pwa-th-no-headers-swreload",
+  "export": "th_pwa_debug",
+  "case": "frames60_c42",
+  "expected": 42,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   42
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 152,
+   "median": 157,
+   "p90": 169,
+   "max": 175
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 468,
+   "median": 475,
+   "p90": 490,
+   "max": 494
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 1035,
+   "median": 1049,
+   "p90": 1062,
+   "max": 1070
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 1283,
+   "median": 1294,
+   "p90": 1316,
+   "max": 1327
+  },
+  "page_errors": [
+   "Error while registering service worker: Error: Service worker already exists."
+  ],
+  "loads": [
+   3
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   false,
+   true
+  ]
+ },
+ {
+  "matrix": "pwa-th-no-headers-swreload",
+  "export": "th_pwa_debug",
+  "case": "ready_dummyaudio_c5",
+  "expected": 5,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   5
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 154,
+   "median": 157,
+   "p90": 162,
+   "max": 162
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 372,
+   "median": 377,
+   "p90": 386,
+   "max": 388
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 454,
+   "median": 465,
+   "p90": 479,
+   "max": 481
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 696,
+   "median": 708,
+   "p90": 734,
+   "max": 737
+  },
+  "page_errors": [
+   "Error while registering service worker: Error: Service worker already exists."
+  ],
+  "loads": [
+   3
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   false,
+   true
+  ]
+ }
+]

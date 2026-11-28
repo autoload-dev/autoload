@@ -1,0 +1,173 @@
+[
+ {
+  "matrix": "th-gpu",
+  "export": "th_release",
+  "case": "ready_c3",
+  "expected": 3,
+  "runs": 20,
+  "correct_code": 0,
+  "statuses": {
+   "timeout": 20
+  },
+  "codes": [
+   124
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 0,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 225,
+   "median": 260,
+   "p90": 329,
+   "max": 421
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 615,
+   "median": 679,
+   "p90": 832,
+   "max": 896
+  },
+  "page_exit_ms": null,
+  "wall_total_ms": null,
+  "page_errors": [
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57411/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57437/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57463/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57488/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57514/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57538/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57565/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57589/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57614/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57640/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57665/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57692/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57716/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57743/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57767/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57791/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57817/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57841/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57868/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:57892/index.js:1:"
+  ],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-gpu",
+  "export": "th_release",
+  "case": "frames60_c42",
+  "expected": 42,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   42
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 236,
+   "median": 272,
+   "p90": 367,
+   "max": 393
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 621,
+   "median": 690,
+   "p90": 805,
+   "max": 886
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 1126,
+   "median": 1202,
+   "p90": 1310,
+   "max": 1397
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 1202,
+   "median": 1282,
+   "p90": 1386,
+   "max": 1493
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-gpu",
+  "export": "th_release",
+  "case": "ready_dummyaudio_c5",
+  "expected": 5,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   5
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 234,
+   "median": 261,
+   "p90": 348,
+   "max": 384
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 502,
+   "median": 540,
+   "p90": 630,
+   "max": 659
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 529,
+   "median": 572,
+   "p90": 658,
+   "max": 688
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 599,
+   "median": 646,
+   "p90": 734,
+   "max": 765
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)"
+  ],
+  "isolated": [
+   true
+  ]
+ }
+]

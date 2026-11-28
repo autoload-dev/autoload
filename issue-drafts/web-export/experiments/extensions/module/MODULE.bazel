@@ -1,0 +1,64 @@
+module(name = "exp_web_extensions")
+
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_cc", version = "0.2.28")
+bazel_dep(name = "emsdk", version = "7.0.0")
+bazel_dep(name = "autoload_rules_godot", version = "0.0.0")
+local_path_override(
+    module_name = "autoload_rules_godot",
+    path = "../rules_godot",
+)
+
+emscripten_deps = use_extension("@emsdk//:emscripten_deps.bzl", "emscripten_deps")
+emscripten_deps.config(version = "4.0.20")
+
+godot_cpp_bindings = use_repo_rule(
+    "@autoload_rules_godot//godot/extension:repositories.bzl",
+    "godot_cpp_bindings",
+)
+
+# wasm32 is a 32-bit target: the bindings' struct layouts are generated for 32 bits.
+godot_cpp_bindings(
+    name = "godot_cpp",
+    api_path = "gdextension/extension_api-4-7.json",
+    bits = "32",
+    enabled_classes = ["RefCounted"],
+)
+
+bazel_dep(name = "bazel_skylib", version = "1.9.2")
+bazel_dep(name = "rules_python", version = "2.5.1")
+
+# Attempt B: own toolchains, one SDK per version and execution platform.
+emscripten = use_extension("//emscripten:extensions.bzl", "emscripten")
+emscripten.version(version = "4.0.20")
+emscripten.version(version = "6.0.12")
+use_repo(emscripten, "emscripten_toolchains")
+
+register_toolchains("@emscripten_toolchains//:all")
+
+# Q5: the engine that godot_extension's editor toolchain needs.
+godot_engines = use_extension("@autoload_rules_godot//godot:extensions.bzl", "godot_engines")
+godot_engines.prebuilt(
+    name = "godot",
+    version = "4.7.2",
+)
+use_repo(godot_engines, "godot")
+
+register_toolchains("@godot//toolchains:all")
+
+# Remote execution check: BuildBuddy's Linux execution platform (--config=buildbuddy).
+bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4")
+
+buildbuddy = use_extension("@toolchains_buildbuddy//:extensions.bzl", "buildbuddy")
+buildbuddy.platform(buildbuddy_container_image = "UBUNTU24_04_IMAGE")
+
+# The SQLite proof of the issue: the examples' amalgamation.
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "sqlite",
+    build_file = "//sqlite:sqlite.BUILD.bazel",
+    sha256 = "0a9c8e34352dad46006aa82836d5383bff9dc6bc9ce5a60553c05aa30e6ad1f9",
+    strip_prefix = "sqlite-amalgamation-3540100",
+    urls = ["https://www.sqlite.org/2026/sqlite-amalgamation-3540100.zip"],
+)

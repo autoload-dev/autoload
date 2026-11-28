@@ -1,0 +1,13 @@
+exec ${PAGER:-/usr/bin/less} "$0" || exit 1
+Executing tests from //web_exp:smoke_app_test
+-----------------------------------------------------------------------------
+web_test_runner: godot args ["--audio-driver", "Dummy", "--autoload-test", "--"]
+harness: webgl2 renderer ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
+Build configuration: Emscripten 4.0.20, single-threaded, no GDExtension support.
+smoke: started on Web, display web
+smoke: drew a frame, quitting with 0
+web_test_runner: timings {"chrome_to_first_request_s": 0.108, "page_marks_ms": {"script": 0, "loaded": 122, "main": 596, "exit": 667}, "total_s": 1.005, "finished": true, "exit": "0"}
+web_test_runner: report channels []
+/buildbuddy-execroot/external/bazel_tools/tools/test/test-setup.sh: line 331: file: command not found

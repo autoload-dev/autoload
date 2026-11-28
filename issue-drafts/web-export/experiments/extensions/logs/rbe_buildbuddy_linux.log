@@ -1,0 +1,13 @@
+INFO: Invocation ID: b9a23258-8f58-4410-8912-21d6a6a71f93
+WARNING: Build option --toolchain_resolution_debug has changed, discarding analysis cache (this can be expensive, see https://bazel.build/advanced/performance/iteration-speed).
+INFO: Analyzed target //ext:web_hello.wasm (139 packages loaded, 12335 targets configured).
+INFO: From Generating @@+godot_cpp_bindings+godot_cpp//:bindings:
+Built-in type config: float_32
+INFO: Found 1 target...
+Target //ext:web_hello.wasm up-to-date:
+  bazel-bin/ext/web_hello.wasm
+INFO: Elapsed time: 34.726s, Critical Path: 33.26s
+INFO: 82 processes: 16 internal, 66 remote.
+INFO: Build completed successfully, 82 total actions
+INFO: 
+exit=0

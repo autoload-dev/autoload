@@ -1,0 +1,26 @@
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load(":toolchain_config.bzl", "python_interpreter_files")
+
+exports_files([
+    "emcc.sh.tpl",
+    "emscripten_config.tpl",
+    "sdk.BUILD.tpl",
+])
+
+# The Emscripten version that native code for the web is built with. In the ruleset this
+# would follow the engine (profiles.bzl), not be a flag of its own.
+string_flag(
+    name = "version",
+    build_setting_default = "4.0.20",
+    values = [
+        "4.0.20",
+        "6.0.12",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# Hermetic Python for emcc.py, resolved for the execution platform (emsdk's pattern).
+python_interpreter_files(
+    name = "python",
+    visibility = ["//visibility:public"],
+)

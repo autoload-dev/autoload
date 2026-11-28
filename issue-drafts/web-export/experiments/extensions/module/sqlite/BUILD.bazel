@@ -1,0 +1,27 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("//ext:versions.bzl", "side_module_for")
+
+exports_files(["sqlite.BUILD.bazel"])
+
+# The examples' SQLite extension, unchanged, as a side module.
+cc_binary(
+    name = "sqlite.wasm",
+    srcs = ["database.cc"],
+    linkshared = True,
+    deps = [
+        "@godot_cpp",
+        "@sqlite",
+    ],
+)
+
+side_module_for(
+    name = "for_godot_4_7",
+    emscripten = "4.0.20",
+    module = ":sqlite.wasm",
+)
+
+side_module_for(
+    name = "for_godot_4_8",
+    emscripten = "6.0.12",
+    module = ":sqlite.wasm",
+)

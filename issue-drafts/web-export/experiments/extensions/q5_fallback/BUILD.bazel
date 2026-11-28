@@ -1,0 +1,35 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+platform(
+    name = "web",
+    constraint_values = [
+        "@platforms//os:emscripten",
+        "@platforms//cpu:wasm32",
+    ],
+)
+
+cc_library(
+    name = "native",
+    srcs = ["native.cc"],
+)
+
+cc_binary(
+    name = "native_shared",
+    linkshared = True,
+    deps = [":native"],
+)
+
+# A target with no C++ of its own that consumes the library, as a pack consumes an extension.
+genrule(
+    name = "consumer",
+    srcs = [":native_shared"],
+    outs = ["consumer.txt"],
+    cmd = "ls $(SRCS) > $@",
+)
+
+# A target without native code: must stay buildable on the web.
+genrule(
+    name = "script_only",
+    outs = ["script_only.txt"],
+    cmd = "echo ok > $@",
+)

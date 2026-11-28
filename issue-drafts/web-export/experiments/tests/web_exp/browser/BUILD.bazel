@@ -1,0 +1,45 @@
+load(":defs.bzl", "browser_toolchain", "no_test_toolchain")
+
+# EXPERIMENT(web tests), variant B. Register with --extra_toolchains=//web_exp/browser:all.
+
+toolchain_type(
+    name = "browser_toolchain_type",
+    visibility = ["//visibility:public"],
+)
+
+[
+    (
+        browser_toolchain(
+            name = "chrome_%s_%s" % (os, cpu),
+            chrome = "@rules_browsers_chrome_%s//:%s" % (repo, binary),
+            files = ["@rules_browsers_chrome_%s//:info" % repo],
+        ),
+        toolchain(
+            name = "browser_%s_%s" % (os, cpu),
+            exec_compatible_with = [
+                "@platforms//os:" + os,
+                "@platforms//cpu:" + cpu,
+            ],
+            target_compatible_with = ["@platforms//os:emscripten"],
+            toolchain = ":chrome_%s_%s" % (os, cpu),
+            toolchain_type = ":browser_toolchain_type",
+        ),
+    )
+    for os, cpu, repo, binary in [
+        ("linux", "x86_64", "linux", "chrome-headless-shell-linux64/chrome-headless-shell"),
+        ("macos", "arm64", "mac_arm", "chrome-headless-shell-mac-arm64/chrome-headless-shell"),
+    ]
+]
+
+no_test_toolchain(
+    name = "no_test",
+    target_compatible_with = ["@platforms//:incompatible"],
+)
+
+# Every other test on the web: its default test toolchain is incompatible, so the test is too.
+toolchain(
+    name = "web_default_test",
+    target_compatible_with = ["@platforms//os:emscripten"],
+    toolchain = ":no_test",
+    toolchain_type = "@bazel_tools//tools/test:default_test_toolchain_type",
+)

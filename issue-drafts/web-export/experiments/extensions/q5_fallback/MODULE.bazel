@@ -1,0 +1,14 @@
+module(name = "q5")
+
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_cc", version = "0.2.28")
+bazel_dep(name = "web_cc_fallback")
+local_path_override(
+    module_name = "web_cc_fallback",
+    path = "fallback",
+)
+
+bazel_dep(name = "emsdk", version = "7.0.0")
+
+emscripten_deps = use_extension("@emsdk//:emscripten_deps.bzl", "emscripten_deps")
+emscripten_deps.config(version = "4.0.20")

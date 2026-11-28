@@ -1,0 +1,34 @@
+[
+ {
+  "matrix": "th-no-headers",
+  "export": "th_release",
+  "case": "frames60_c42",
+  "expected": 42,
+  "runs": 20,
+  "correct_code": 0,
+  "statuses": {
+   "page-failed": 20
+  },
+  "codes": [
+   126
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 0,
+  "first_stdout_ms": null,
+  "ready_ms": null,
+  "page_exit_ms": null,
+  "wall_total_ms": null,
+  "page_errors": [
+   "Error\nThe following features required to run Godot projects on the Web are missing:\nCross-Origin Isolation - Check that "
+  ],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   false
+  ]
+ }
+]

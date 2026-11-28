@@ -1,0 +1,16 @@
+Starting local Bazel server (9.3.0) and connecting to it...
+INFO: Invocation ID: c18906dc-b220-4baf-a4f2-152ad63b88a7
+INFO: Analyzed target //ext:web_hello.wasm (143 packages loaded, 12340 targets configured).
+INFO: From Generating @@+godot_cpp_bindings+godot_cpp//:bindings:
+Built-in type config: float_32
+INFO: Found 1 target...
+Target //ext:web_hello.wasm up-to-date:
+  bazel-bin/ext/web_hello.wasm
+INFO: Elapsed time: 6.486s, Critical Path: 3.21s
+INFO: 82 processes: 66 remote cache hit, 16 internal.
+INFO: Build completed successfully, 82 total actions
+INFO: 
+exit=0
+<scratch>/ob_probe/external/+emscripten+emscripten_4_0_20_linux_x86_64
+<scratch>/ob_probe/external/+emscripten+emscripten_toolchains
+<scratch>/ob_probe/external/@+emscripten+emscripten_toolchains.marker

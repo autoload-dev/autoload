@@ -1,0 +1,20 @@
+web_test_runner: godot args ["--audio-driver", "Dummy", "--autoload-test", "--", "-a", "res://suites"]
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
+Build configuration: Emscripten 4.0.20, single-threaded, no GDExtension support.
+web_run: features web=true debug=true; display=web; GdUnit args ["GdUnitCmdTool.gd", "--ignoreHeadlessMode", "-c", "-rd", "user://gdunit", "-rc", "1", "-a", "res://suites"]
+[2J[H
+--------------------------------------------------------------------------------------------------
+GdUnit4 Comandline Tool
+--------------------------------------------------------------------------------------------------
+Disabled fail fast!
+Set write reports to /userfs/godot/app_userdata/gdunit web experiment/gdunit
+Set report history count to 1
+Scanning for test suites in: res://suites
+No test cases found, abort test run!
+Exit code: 0
+web_run: GdUnit exit 0; reports in /userfs/godot/app_userdata/gdunit web experiment/gdunit; JUnit at 
+web_run: GdUnit wrote no JUnit report
+Run dispose test resources
+web_test_runner: timings {"chrome_to_first_request_s": 0.835, "page_marks_ms": {"script": 0, "loaded": 188, "main": 778, "exit": 1189}, "total_s": 2.46, "finished": true, "exit": "1"}
+web_test_runner: report channels []

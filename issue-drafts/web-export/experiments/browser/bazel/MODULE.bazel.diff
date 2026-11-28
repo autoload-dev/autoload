@@ -1,0 +1,23 @@
+diff --git a/rules_godot/examples/MODULE.bazel b/rules_godot/examples/MODULE.bazel
+index 41a206010..41955e1c0 100644
+--- a/rules_godot/examples/MODULE.bazel
++++ b/rules_godot/examples/MODULE.bazel
+@@ -270,3 +270,18 @@ buildbuddy = use_extension(
+     dev_dependency = True,
+ )
+ buildbuddy.platform(buildbuddy_container_image = "UBUNTU24_04_IMAGE")
++
++# EXPERIMENT(web-browser): the pinned headless browser.
++bazel_dep(name = "rules_browsers", version = "0.4.0")
++
++# EXPERIMENT(web-browser): the root module pins Chrome and names the per-host repositories
++# for toolchains of its own.
++browsers = use_extension("@rules_browsers//browsers:extensions.bzl", "browsers")
++browsers.chrome(version = "147.0.7687.0")
++use_repo(
++    browsers,
++    "rules_browsers_chrome_linux",
++    "rules_browsers_chrome_mac",
++    "rules_browsers_chrome_mac_arm",
++    "rules_browsers_chrome_win64",
++)

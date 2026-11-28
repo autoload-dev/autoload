@@ -1,0 +1,7 @@
+platform(
+    name = "web",
+    constraint_values = [
+        "@platforms//os:emscripten",
+        "@platforms//cpu:wasm32",
+    ],
+)

@@ -1,0 +1,31 @@
+load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+load("//web_exp/browser:defs.bzl", "trivial_test", "web_browser_test")
+
+package(default_testonly = True)
+
+web_browser_test(
+    name = "browser_toolchain_test",
+    size = "small",
+    app = "//web_exp:app_text",
+    # On a remote Linux executor: an image with Chrome's shared libraries.
+    exec_properties = {"test.container-image": "docker://mcr.microsoft.com/playwright:v1.49.1-noble"},
+    suites = [
+        "res://suites/MockTest.gd",
+        "res://suites/PassingTest.gd",
+    ],
+    target_compatible_with = ["@platforms//os:emscripten"],
+)
+
+# Unmarked desktop test: with the incompatible default test toolchain, skipped on the web.
+gdunit_test(
+    name = "desktop_test",
+    size = "small",
+    project = "//web_exp:project",
+    suites = ["//web_exp:suites"],
+)
+
+# Any other test rule without toolchains of its own: skipped on the web as well.
+trivial_test(
+    name = "plain_test",
+    size = "small",
+)

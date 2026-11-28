@@ -1,0 +1,20 @@
+# Variant A (the research's wording): the toolchain is @platforms//:incompatible itself.
+toolchain(
+    name = "incompatible_web_cc_constraint",
+    target_compatible_with = ["@platforms//os:emscripten"],
+    toolchain = "@platforms//:incompatible",
+    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
+)
+
+# Variant B: the toolchain is a target that is itself incompatible with every platform.
+filegroup(
+    name = "no_web_cc",
+    target_compatible_with = ["@platforms//:incompatible"],
+)
+
+toolchain(
+    name = "incompatible_web_cc",
+    target_compatible_with = ["@platforms//os:emscripten"],
+    toolchain = ":no_web_cc",
+    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
+)

@@ -1,0 +1,24 @@
+# EXPERIMENT(web tests): test toolchains that let a test configured for the web export
+# platform run on an execution platform that has a pinned Chrome. Bazel's default test
+# toolchain would require the execution platform to carry @platforms//os:emscripten.
+[
+    toolchain(
+        name = "web_test_toolchain_%s_%s" % (os, cpu),
+        exec_compatible_with = [
+            "@platforms//os:" + os,
+            "@platforms//cpu:" + cpu,
+        ],
+        target_compatible_with = [
+            "@platforms//os:emscripten",
+            "@platforms//cpu:wasm32",
+        ],
+        toolchain = "@bazel_tools//tools/test:empty_toolchain",
+        toolchain_type = "@bazel_tools//tools/test:default_test_toolchain_type",
+    )
+    # The platforms rules_browsers has a chrome-headless-shell for (no linux arm64).
+    for os, cpu in [
+        ("linux", "x86_64"),
+        ("macos", "arm64"),
+        ("macos", "x86_64"),
+    ]
+]

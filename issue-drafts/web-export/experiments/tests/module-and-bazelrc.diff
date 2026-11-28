@@ -1,0 +1,39 @@
+diff --git a/addons/gdunit/examples/.bazelrc b/addons/gdunit/examples/.bazelrc
+index a37cbfef3..e6e48bd8b 100644
+--- a/addons/gdunit/examples/.bazelrc
++++ b/addons/gdunit/examples/.bazelrc
+@@ -3,3 +3,10 @@
+ import %workspace%/../../examples.bazelrc
+ 
+ build:buildbuddy --build_metadata=TAGS=autoload_gdunit_examples
++
++# EXPERIMENT(web tests)
++build:web --platforms=@autoload_rules_godot//godot/platforms:web_wasm32
++build:web --@autoload_rules_godot//godot:variant=debug
++build:webgodot --config=web --@autoload_rules_godot//godot:pack_conversion=godot
++build:webtest --config=web --extra_toolchains=//web_exp/toolchains:all
++build:webtestb --config=web --extra_toolchains=//web_exp/browser:all
+diff --git a/addons/gdunit/examples/MODULE.bazel b/addons/gdunit/examples/MODULE.bazel
+index 9cfac93d1..67015a61b 100644
+--- a/addons/gdunit/examples/MODULE.bazel
++++ b/addons/gdunit/examples/MODULE.bazel
+@@ -37,3 +37,19 @@ godot_engines.prebuilt(
+ use_repo(godot_engines, "godot")
+ 
+ register_toolchains("@godot//toolchains:all")
++
++# EXPERIMENT(web tests): the pinned headless Chrome of rules_browsers.
++bazel_dep(name = "rules_browsers", version = "0.4.0", dev_dependency = True)
++
++browsers = use_extension("@rules_browsers//browsers:extensions.bzl", "browsers", dev_dependency = True)
++browsers.chrome()
++use_repo(browsers, "rules_browsers_chrome_linux", "rules_browsers_chrome_mac_arm")
++# rules_browsers 0.4.0 resolves aspect_bazel_lib 2.14.0, whose coreutils toolchain fails
++# to load in Bazel 9 (rule(incompatible_use_toolchain_transition)).
++bazel_dep(name = "aspect_bazel_lib", version = "2.22.5", dev_dependency = True)
++
++# EXPERIMENT(web tests): BuildBuddy's Linux execution platform for --config=buildbuddy.
++bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4", dev_dependency = True)
++
++buildbuddy = use_extension("@toolchains_buildbuddy//:extensions.bzl", "buildbuddy", dev_dependency = True)
++buildbuddy.platform(buildbuddy_container_image = "UBUNTU24_04_IMAGE")

@@ -1,0 +1,11 @@
+[configuration]
+
+entry_symbol = "web_hello_init"
+compatibility_minimum = "4.7"
+
+[libraries]
+
+web.debug.threads.wasm32 = "res://bin/web_hello.threads.wasm"
+web.release.threads.wasm32 = "res://bin/web_hello.threads.wasm"
+web.debug.wasm32 = "res://bin/web_hello.nothreads.wasm"
+web.release.wasm32 = "res://bin/web_hello.nothreads.wasm"

@@ -1,0 +1,226 @@
+load("@autoload_gdunit//:defs.bzl", "gdunit_test")
+load("@autoload_rules_godot//godot:app.bzl", "godot_app")
+load("@autoload_rules_godot//godot:defs.bzl", "godot_pack", "godot_project", "godot_resources")
+load("@rules_python//python:py_binary.bzl", "py_binary")
+load("//web_exp/browser:defs.bzl", browser_toolchain_test = "web_browser_test")
+load(":defs.bzl", "web_browser_test")
+
+# EXPERIMENT(web tests): GdUnit suites exported into a web pack and run in a headless
+# browser. Build with
+#   bazel build //web_exp:app_binary //web_exp:app_text \
+#       --platforms=@autoload_rules_godot//godot/platforms:web_wasm32 \
+#       --@autoload_rules_godot//godot:variant=debug
+package(
+    default_testonly = True,
+    default_visibility = ["//web_exp:__subpackages__"],
+)
+
+exports_files(["project.godot"])
+
+godot_project(
+    name = "project",
+    project_file = "project.godot",
+)
+
+godot_resources(
+    name = "suites",
+    srcs = glob(["suites/*.gd"]),
+    deps = [
+        ":support",
+        "@autoload_gdunit//:gdunit",
+    ],
+)
+
+godot_resources(
+    name = "support",
+    srcs = ["support/greeter.gd"],
+)
+
+godot_resources(
+    name = "runner",
+    srcs = ["web_run.gd"],
+    deps = ["@autoload_gdunit//:gdunit"],
+)
+
+# script_export_mode: 0 text, 1 binary tokens (Godot's default), 2 compressed tokens.
+[
+    godot_pack(
+        name = "pack_" + mode,
+        preset_settings = {"script_export_mode": value},
+        project = ":project",
+        # Export templates of Godot 4.6+ drop --script; the main loop comes from the pack.
+        settings = {"application/run/main_loop_type": '"GdUnitWebRunner"'},
+        deps = [
+            ":runner",
+            ":suites",
+        ],
+    )
+    for mode, value in [
+        ("text", "0"),
+        ("binary", "1"),
+        ("compressed", "2"),
+    ]
+]
+
+[
+    godot_app(
+        name = "app_" + mode,
+        application_id = "org.example.gdunitweb." + mode,
+        pack = ":pack_" + mode,
+    )
+    for mode in [
+        "text",
+        "binary",
+        "compressed",
+    ]
+]
+
+# ---- Q3: a test target built for web that runs on the host or a Linux executor ----
+
+# Resolved in the exec configuration of the test exec group: the execution platform's
+# Chrome for Testing build from rules_browsers.
+config_setting(
+    name = "exec_macos_arm64",
+    constraint_values = [
+        "@platforms//os:macos",
+        "@platforms//cpu:arm64",
+    ],
+)
+
+config_setting(
+    name = "exec_linux_x86_64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+)
+
+# No pinned Chrome for this platform (Linux arm64, or a wildcard's web configuration).
+filegroup(
+    name = "no_chrome",
+    target_compatible_with = ["@platforms//:incompatible"],
+)
+
+alias(
+    name = "chrome",
+    actual = select({
+        ":exec_macos_arm64": "@rules_browsers_chrome_mac_arm//:chrome-headless-shell-mac-arm64/chrome-headless-shell",
+        ":exec_linux_x86_64": "@rules_browsers_chrome_linux//:chrome-headless-shell-linux64/chrome-headless-shell",
+        "//conditions:default": ":no_chrome",
+    }),
+)
+
+alias(
+    name = "chrome_files",
+    actual = select({
+        ":exec_macos_arm64": "@rules_browsers_chrome_mac_arm//:info",
+        ":exec_linux_x86_64": "@rules_browsers_chrome_linux//:info",
+        "//conditions:default": ":no_chrome",
+    }),
+)
+
+py_binary(
+    name = "web_test_runner",
+    srcs = ["web_test_runner.py"],
+    # A host tool: a web wildcard would otherwise configure it for the browser.
+    target_compatible_with = select({
+        "@platforms//os:emscripten": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
+)
+
+web_browser_test(
+    name = "gdunit_web_test",
+    size = "small",
+    app = ":app_text",
+    shard_count = 3,
+    suites = [
+        "res://suites/FailingTest.gd",
+        "res://suites/MockTest.gd",
+        "res://suites/PassingTest.gd",
+    ],
+)
+
+web_browser_test(
+    name = "gdunit_web_passing_test",
+    size = "small",
+    app = ":app_text",
+    # On a remote Linux executor: an image with Chrome's shared libraries (libnspr4, libnss3,
+    # ...), which BuildBuddy's default Ubuntu 24.04 image lacks. Only the test exec group.
+    exec_properties = {"test.container-image": "docker://mcr.microsoft.com/playwright:v1.49.1-noble"},
+    suites = [
+        "res://suites/MockTest.gd",
+        "res://suites/PassingTest.gd",
+    ],
+)
+
+# ---- Q3: incompatibility ----
+
+# A desktop gdunit_test, unchanged: on web it is neither skipped nor run in a browser.
+gdunit_test(
+    name = "desktop_suites_test",
+    size = "small",
+    project = ":project",
+    suites = [":suites"],
+)
+
+# The same test, incompatible with the web export platform: a wildcard skips it.
+gdunit_test(
+    name = "desktop_suites_marked_test",
+    size = "small",
+    project = ":project",
+    suites = [":suites"],
+    target_compatible_with = select({
+        "@autoload_rules_godot//godot/platforms:is_web": ["@platforms//:incompatible"],
+        "//conditions:default": [],
+    }),
+)
+
+# A browser test on a desktop target platform: incompatible there.
+web_browser_test(
+    name = "web_only_test",
+    size = "small",
+    app = ":app_text",
+    suites = ["res://suites/PassingTest.gd"],
+    target_compatible_with = ["@platforms//os:emscripten"],
+)
+
+# ---- Q4: the smallest application test, for cost and stability ----
+
+godot_resources(
+    name = "smoke_files",
+    srcs = ["smoke/smoke.gd"],
+)
+
+godot_pack(
+    name = "pack_smoke",
+    project = ":project",
+    settings = {"application/run/main_loop_type": '"WebSmoke"'},
+    deps = [":smoke_files"],
+)
+
+godot_app(
+    name = "app_smoke",
+    application_id = "org.example.gdunitweb.smoke",
+    pack = ":pack_smoke",
+)
+
+browser_toolchain_test(
+    name = "smoke_app_test",
+    size = "small",
+    app = ":app_smoke",
+    exec_properties = {"test.container-image": "docker://mcr.microsoft.com/playwright:v1.49.1-noble"},
+    target_compatible_with = ["@platforms//os:emscripten"],
+)
+
+browser_toolchain_test(
+    name = "gdunit_app_test",
+    size = "small",
+    app = ":app_text",
+    exec_properties = {"test.container-image": "docker://mcr.microsoft.com/playwright:v1.49.1-noble"},
+    suites = [
+        "res://suites/MockTest.gd",
+        "res://suites/PassingTest.gd",
+    ],
+    target_compatible_with = ["@platforms//os:emscripten"],
+)

@@ -1,0 +1,85 @@
+load(":defs.bzl", "browser_toolchain", "exec_launcher", "host_launcher", "target_launcher", "toolchain_launcher")
+
+exec_launcher(name = "exec")
+
+target_launcher(name = "target")
+
+host_launcher(name = "host")
+
+# D: rules_browsers' make variables through `toolchains`, the way its own docs suggest.
+genrule(
+    name = "make_vars",
+    outs = ["make_vars.txt"],
+    cmd = "echo $(CHROME-HEADLESS-SHELL) > $@",
+    toolchains = ["@rules_browsers//browsers/chromium:toolchain_alias"],
+)
+
+# A Linux x86_64 and a Linux arm64 execution platform, as remote executors would offer.
+platform(
+    name = "linux_x86_64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+)
+
+platform(
+    name = "linux_arm64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+    ],
+)
+
+toolchain_type(name = "browser_toolchain_type")
+
+[
+    (
+        browser_toolchain(
+            name = "chrome_" + host,
+            browser = "@rules_browsers_chrome_{}//:info".format(repo),
+        ),
+        toolchain(
+            name = "chrome_{}_toolchain".format(host),
+            exec_compatible_with = constraints,
+            toolchain = ":chrome_" + host,
+            toolchain_type = ":browser_toolchain_type",
+        ),
+    )
+    for host, repo, constraints in [
+        (
+            "linux_x86_64",
+            "linux",
+            [
+                "@platforms//os:linux",
+                "@platforms//cpu:x86_64",
+            ],
+        ),
+        (
+            "macos_x86_64",
+            "mac",
+            [
+                "@platforms//os:macos",
+                "@platforms//cpu:x86_64",
+            ],
+        ),
+        (
+            "macos_arm64",
+            "mac_arm",
+            [
+                "@platforms//os:macos",
+                "@platforms//cpu:aarch64",
+            ],
+        ),
+        (
+            "windows_x86_64",
+            "win64",
+            [
+                "@platforms//os:windows",
+                "@platforms//cpu:x86_64",
+            ],
+        ),
+    ]
+]
+
+toolchain_launcher(name = "toolchain")

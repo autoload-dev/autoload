@@ -1,0 +1,110 @@
+[
+ {
+  "matrix": "nt-no-headers",
+  "export": "nt_release",
+  "case": "frames60_c42",
+  "expected": 42,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   42
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 196,
+   "median": 212,
+   "p90": 293,
+   "max": 299
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 527,
+   "median": 574,
+   "p90": 714,
+   "max": 739
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 1091,
+   "median": 1150,
+   "p90": 1318,
+   "max": 1325
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 1157,
+   "median": 1229,
+   "p90": 1404,
+   "max": 1411
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   false
+  ]
+ },
+ {
+  "matrix": "nt-no-headers",
+  "export": "nt_release",
+  "case": "ready_dummyaudio_c5",
+  "expected": 5,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   5
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 192,
+   "median": 205,
+   "p90": 247,
+   "max": 251
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 413,
+   "median": 441,
+   "p90": 492,
+   "max": 495
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 489,
+   "median": 524,
+   "p90": 591,
+   "max": 592
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 555,
+   "median": 592,
+   "p90": 664,
+   "max": 668
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   false
+  ]
+ }
+]

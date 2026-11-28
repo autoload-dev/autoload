@@ -1,0 +1,2 @@
+import %workspace%/../buildbuddy.bazelrc
+build:buildbuddy --build_metadata=TAGS=exp-web-extensions

@@ -1,0 +1,8 @@
+text plain exit=100 ::    5 SCRIPT ERROR: Cannot call method 'get_as_text' on a null value.;   1 Statistics: 2 test cases | 0 errors | 0 failures | 0 flaky | 0 skipped | 0 orphans | PASSED 70ms;   1 Statistics: 2 test cases | 0 errors | 1 failures | 0 flaky | 0 skipped | 0 orphans | FAILED 454ms;   1 Statistics: 5 test cases | 0 errors | 0 failures | 0 flaky | 0 skipped | 0 orphans | PASSED 62ms;
+text resolve exit=100 ::    5 SCRIPT ERROR: Cannot call method 'get_as_text' on a null value.;   1 Statistics: 2 test cases | 0 errors | 0 failures | 0 flaky | 0 skipped | 0 orphans | PASSED 68ms;   1 Statistics: 2 test cases | 0 errors | 1 failures | 0 flaky | 0 skipped | 0 orphans | FAILED 238ms;   1 Statistics: 5 test cases | 0 errors | 0 failures | 0 flaky | 0 skipped | 0 orphans | PASSED 31ms;   1 web_run: discovered 9 tests through ResourceLoader;
+binary plain exit=1 ::    1 No test cases found, abort test run!;
+binary resolve exit=105 ::    1 Abnormal exit with 105;   7 SCRIPT ERROR: Assertion failed: Precondition: The parameter 'source_file' is not set;   1 SCRIPT ERROR: Trying to assign value of type 'Nil' to a variable of type 'String'.;   1 web_run: discovered 7 tests through ResourceLoader;
+compressed plain exit=1 ::    1 No test cases found, abort test run!;
+compressed resolve exit=105 ::    1 Abnormal exit with 105;   7 SCRIPT ERROR: Assertion failed: Precondition: The parameter 'source_file' is not set;   1 SCRIPT ERROR: Trying to assign value of type 'Nil' to a variable of type 'String'.;   1 web_run: discovered 7 tests through ResourceLoader;
+
+[exited with code 0]

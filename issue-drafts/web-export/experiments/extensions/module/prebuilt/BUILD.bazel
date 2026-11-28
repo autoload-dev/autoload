@@ -1,0 +1,48 @@
+load("@autoload_rules_godot//godot:defs.bzl", "godot_addon")
+load("@autoload_rules_godot//godot/extension:defs.bzl", "godot_extension")
+
+# What the ruleset would ship: a library for platforms an extension has none for. Depending
+# on it makes the extension, and every add-on, pack and application above it, incompatible.
+filegroup(
+    name = "unsupported",
+    target_compatible_with = ["@platforms//:incompatible"],
+)
+
+# A vendor's prebuilt extension without a web library, as Sentry's.
+[
+    godot_extension(
+        name = "vendor_" + kind,
+        entry_symbol = "vendor_init",
+        library = select({
+            "@platforms//os:linux": "libvendor.linux.so",
+            "@platforms//os:macos": "libvendor.macos.dylib",
+        } | default),
+    )
+    for kind, default in [
+        # Sentry's shape: no branch for the web.
+        ("no_match", {}),
+        # The ruleset's existing meaning of None: no library, dropped from the application.
+        (
+            "none",
+            {"//conditions:default": None},
+        ),
+        # The sentinel: incompatible on every platform without a library.
+        (
+            "sentinel",
+            {"//conditions:default": ":unsupported"},
+        ),
+    ]
+]
+
+[
+    godot_addon(
+        name = "addon_" + kind,
+        directory = "addons/vendor_" + kind,
+        deps = [":vendor_" + kind],
+    )
+    for kind in [
+        "no_match",
+        "none",
+        "sentinel",
+    ]
+]

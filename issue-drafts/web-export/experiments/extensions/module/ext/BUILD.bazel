@@ -1,0 +1,45 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+load(":versions.bzl", "side_module_for")
+
+# Attempt A: the BCR emsdk toolchain, plain cc_binary(linkshared) as a side module.
+cc_binary(
+    name = "web_hello_bcr.wasm",
+    srcs = ["hello.cc"],
+    copts = ["-fno-exceptions"],
+    linkopts = [
+        "-sSIDE_MODULE=1",
+        "--oformat=wasm",
+        "-sWASM_BIGINT",
+        "-sSUPPORT_LONGJMP=wasm",
+    ],
+    linkshared = True,
+    deps = ["@godot_cpp"],
+)
+
+# Attempt B: the own toolchain; no flags on the command line, a plain .wasm output.
+cc_binary(
+    name = "web_hello.wasm",
+    srcs = ["hello.cc"],
+    linkshared = True,
+    deps = ["@godot_cpp"],
+)
+
+side_module_for(
+    name = "for_godot_4_7",
+    emscripten = "4.0.20",
+    module = ":web_hello.wasm",
+)
+
+side_module_for(
+    name = "for_godot_4_8",
+    emscripten = "6.0.12",
+    module = ":web_hello.wasm",
+)
+
+filegroup(
+    name = "both",
+    srcs = [
+        ":for_godot_4_7",
+        ":for_godot_4_8",
+    ],
+)

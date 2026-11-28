@@ -1,0 +1,180 @@
+exec ${PAGER:-/usr/bin/less} "$0" || exit 1
+Executing tests from //web_exp:gdunit_app_test
+-----------------------------------------------------------------------------
+web_test_runner: godot args ["--audio-driver", "Dummy", "--autoload-test", "--", "-a", "res://suites/MockTest.gd", "-a", "res://suites/PassingTest.gd"]
+harness: webgl2 renderer ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+OpenGL API OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium)) - Compatibility - Using Device: WebKit - WebKit WebGL
+Build configuration: Emscripten 4.0.20, single-threaded, no GDExtension support.
+web_run: features web=true debug=true; display=web; GdUnit args ["GdUnitCmdTool.gd", "--ignoreHeadlessMode", "-c", "-rd", "user://gdunit", "-rc", "1", "-a", "res://suites/MockTest.gd", "-a", "res://suites/PassingTest.gd"]
+[2J[H
+--------------------------------------------------------------------------------------------------
+GdUnit4 Comandline Tool
+--------------------------------------------------------------------------------------------------
+Disabled fail fast!
+Set write reports to /userfs/godot/app_userdata/gdunit web experiment/gdunit
+Set report history count to 1
+Installing GdUnit4 session system hooks.
+Session hook 'GdUnitHtmlTestReporter' installed.
+Session hook 'GdUnitXMLTestReporter' installed.
+Run Test Suite: res://suites/MockTest.gd
+  res://suites/MockTest.gd > test_mock_script_class STARTED
+  res://suites/MockTest.gd > test_mock_script_class PASSED 65ms
+
+  res://suites/MockTest.gd > test_spy_script_class STARTED
+  res://suites/MockTest.gd > test_spy_script_class PASSED 47ms
+
+Statistics: 2 test cases | 0 errors | 0 failures | 0 flaky | 0 skipped | 0 orphans | PASSED 215ms
+
+
+Run Test Suite: res://suites/PassingTest.gd
+  res://suites/PassingTest.gd > test_addition STARTED
+  res://suites/PassingTest.gd > test_addition PASSED 6ms
+
+  res://suites/PassingTest.gd > test_platform_is_web STARTED
+  res://suites/PassingTest.gd > test_platform_is_web PASSED 21ms
+
+  res://suites/PassingTest.gd > test_expected_engine_error STARTED
+ERROR: deliberately checked by GdUnit
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] <anonymous lambda> (res://suites/PassingTest.gd:10)
+       [1] _execute (res://addons/gdUnit4/src/asserts/GdUnitGodotErrorAssertImpl.gd:17)
+       [2] is_push_error (res://addons/gdUnit4/src/asserts/GdUnitGodotErrorAssertImpl.gd:132)
+       [3] test_expected_engine_error (res://suites/PassingTest.gd:10)
+       [4] _execute_test_case (res://addons/gdUnit4/src/core/_TestCase.gd:79)
+       [5] execute (res://addons/gdUnit4/src/core/_TestCase.gd:40)
+       [6] _execute (res://addons/gdUnit4/src/core/execution/stages/single/GdUnitTestCaseSingleTestStage.gd:10)
+       [7] execute (res://addons/gdUnit4/src/core/execution/stages/IGdUnitExecutionStage.gd:19)
+       [8] _execute (res://addons/gdUnit4/src/core/execution/stages/single/GdUnitTestCaseSingleExecutionStage.gd:17)
+       [9] execute (res://addons/gdUnit4/src/core/execution/stages/IGdUnitExecutionStage.gd:19)
+       [10] _execute (res://addons/gdUnit4/src/core/execution/stages/GdUnitTestCaseExecutionStage.gd:26)
+       [11] execute (res://addons/gdUnit4/src/core/execution/stages/IGdUnitExecutionStage.gd:19)
+       [12] _execute (res://addons/gdUnit4/src/core/execution/stages/GdUnitTestSuiteExecutionStage.gd:36)
+       [13] execute (res://addons/gdUnit4/src/core/execution/stages/IGdUnitExecutionStage.gd:19)
+       [14] _execute (res://addons/gdUnit4/src/core/execution/stages/GdUnitTestCaseExecutionStage.gd:35)
+       [15] execute (res://addons/gdUnit4/src/core/execution/stages/IGdUnitExecutionStage.gd:19)
+       [16] _execute (res://addons/gdUnit4/src/core/execution/stages/single/GdUnitTestCaseSingleExecutionStage.gd:28)
+       [17] execute (res://addons/gdUnit4/src/core/execution/stages/IGdUnitExecutionStage.gd:19)
+       [18] _execute (res://addons/gdUnit4/src/core/execution/stages/single/GdUnitTestCaseSingleTestStage.gd:10)
+       [19] execute (res://addons/gdUnit4/src/core/_TestCase.gd:41)
+       [20] test_completed (res://addons/gdUnit4/src/core/_TestCase.gd:86)
+  res://suites/PassingTest.gd > test_expected_engine_error PASSED 10ms
+
+  res://suites/PassingTest.gd > test_parameterized:0 (1, 2, 3) STARTED
+  res://suites/PassingTest.gd > test_parameterized:0 (1, 2, 3) PASSED 6ms
+
+  res://suites/PassingTest.gd > test_parameterized:1 (2, 2, 4) STARTED
+  res://suites/PassingTest.gd > test_parameterized:1 (2, 2, 4) PASSED 4ms
+
+Statistics: 5 test cases | 0 errors | 0 failures | 0 flaky | 0 skipped | 0 orphans | PASSED 131ms
+
+
+Overall Summary: 7 test cases | 0 errors | 0 failures | 0 flaky | 0 skipped | 0 orphans |
+Executed test suites: (2/2)
+Executed test cases : (7/7)
+Total execution time: 346ms
+ Open XML Report at: file:///userfs/godot/app_userdata/gdunit web experiment/gdunit/report_1/results.xml
+SCRIPT ERROR: Cannot call method 'get_as_text' on a null value.
+   at: load_template (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlPatterns.gd:147)
+   GDScript backtrace (most recent call first):
+       [0] load_template (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlPatterns.gd:147)
+       [1] write (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlReportWriter.gd:10)
+       [2] shutdown (res://addons/gdUnit4/src/core/hooks/GdUnitBaseReporterTestSessionHook.gd:39)
+       [3] execute (res://addons/gdUnit4/src/core/hooks/GdUnitTestSessionHookService.gd:125)
+       [4] execute_shutdown (res://addons/gdUnit4/src/core/hooks/GdUnitTestSessionHookService.gd:112)
+       [5] _process (res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd:131)
+       [6] run_and_wait (res://addons/gdUnit4/src/core/execution/GdUnitTestSuiteExecutor.gd:53)
+       [7] execute (res://addons/gdUnit4/src/core/execution/stages/IGdUnitExecutionStage.gd:19)
+       [8] _execute (res://addons/gdUnit4/src/core/execution/stages/GdUnitTestSuiteExecutionStage.gd:50)
+SCRIPT ERROR: Cannot call method 'get_as_text' on a null value.
+   at: load_template (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlPatterns.gd:147)
+   GDScript backtrace (most recent call first):
+       [0] load_template (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlPatterns.gd:147)
+       [1] write (res://addons/gdUnit4/src/reporters/html/GdUnitByPathReport.gd:32)
+       [2] _apply_path_reports (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlReportWriter.gd:33)
+       [3] write (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlReportWriter.gd:12)
+       [4] shutdown (res://addons/gdUnit4/src/core/hooks/GdUnitBaseReporterTestSessionHook.gd:39)
+       [5] execute (res://addons/gdUnit4/src/core/hooks/GdUnitTestSessionHookService.gd:125)
+       [6] execute_shutdown (res://addons/gdUnit4/src/core/hooks/GdUnitTestSessionHookService.gd:112)
+       [7] _process (res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd:131)
+       [8] run_and_wait (res://addons/gdUnit4/src/core/execution/GdUnitTestSuiteExecutor.gd:53)
+       [9] execute (res://addons/gdUnit4/src/core/execution/stages/IGdUnitExecutionStage.gd:19)
+       [10] _execute (res://addons/gdUnit4/src/core/execution/stages/GdUnitTestSuiteExecutionStage.gd:50)
+SCRIPT ERROR: Cannot call method 'get_as_text' on a null value.
+   at: load_template (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlPatterns.gd:147)
+   GDScript backtrace (most recent call first):
+       [0] load_template (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlPatterns.gd:147)
+       [1] _write (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlReportWriter.gd:49)
+       [2] _apply_testsuite_reports (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlReportWriter.gd:42)
+       [3] write (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlReportWriter.gd:13)
+       [4] shutdown (res://addons/gdUnit4/src/core/hooks/GdUnitBaseReporterTestSessionHook.gd:39)
+       [5] execute (res://addons/gdUnit4/src/core/hooks/GdUnitTestSessionHookService.gd:125)
+       [6] execute_shutdown (res://addons/gdUnit4/src/core/hooks/GdUnitTestSessionHookService.gd:112)
+       [7] _process (res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd:131)
+       [8] run_and_wait (res://addons/gdUnit4/src/core/execution/GdUnitTestSuiteExecutor.gd:53)
+       [9] execute (res://addons/gdUnit4/src/core/execution/stages/IGdUnitExecutionStage.gd:19)
+       [10] _execute (res://addons/gdUnit4/src/core/execution/stages/GdUnitTestSuiteExecutionStage.gd:50)
+SCRIPT ERROR: Cannot call method 'get_as_text' on a null value.
+   at: load_template (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlPatterns.gd:147)
+   GDScript backtrace (most recent call first):
+       [0] load_template (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlPatterns.gd:147)
+       [1] _write (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlReportWriter.gd:49)
+       [2] _apply_testsuite_reports (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlReportWriter.gd:42)
+       [3] write (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlReportWriter.gd:13)
+       [4] shutdown (res://addons/gdUnit4/src/core/hooks/GdUnitBaseReporterTestSessionHook.gd:39)
+       [5] execute (res://addons/gdUnit4/src/core/hooks/GdUnitTestSessionHookService.gd:125)
+       [6] execute_shutdown (res://addons/gdUnit4/src/core/hooks/GdUnitTestSessionHookService.gd:112)
+       [7] _process (res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd:131)
+       [8] run_and_wait (res://addons/gdUnit4/src/core/execution/GdUnitTestSuiteExecutor.gd:53)
+       [9] execute (res://addons/gdUnit4/src/core/execution/stages/IGdUnitExecutionStage.gd:19)
+       [10] _execute (res://addons/gdUnit4/src/core/execution/stages/GdUnitTestSuiteExecutionStage.gd:50)
+ERROR: Source directory not found 'res://addons/gdUnit4/src/reporters/html/template/css/'
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] copy_directory (res://addons/gdUnit4/src/core/GdUnitFileAccess.gd:53)
+       [1] write (res://addons/gdUnit4/src/reporters/html/GdUnitHtmlReportWriter.gd:19)
+       [2] shutdown (res://addons/gdUnit4/src/core/hooks/GdUnitBaseReporterTestSessionHook.gd:39)
+       [3] execute (res://addons/gdUnit4/src/core/hooks/GdUnitTestSessionHookService.gd:125)
+       [4] execute_shutdown (res://addons/gdUnit4/src/core/hooks/GdUnitTestSessionHookService.gd:112)
+       [5] _process (res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd:131)
+       [6] run_and_wait (res://addons/gdUnit4/src/core/execution/GdUnitTestSuiteExecutor.gd:53)
+       [7] execute (res://addons/gdUnit4/src/core/execution/stages/IGdUnitExecutionStage.gd:19)
+       [8] _execute (res://addons/gdUnit4/src/core/execution/stages/GdUnitTestSuiteExecutionStage.gd:50)
+Open HTML Report at: file:///userfs/godot/app_userdata/gdunit web experiment/gdunit/report_1/index.html
+Exit code: 0
+web_run: GdUnit exit 0; reports in /userfs/godot/app_userdata/gdunit web experiment/gdunit; JUnit at /userfs/godot/app_userdata/gdunit web experiment/gdunit/report_1/results.xml
+web_run: handed 1198 bytes of JUnit XML to window.godotTestReport
+@@JUNIT-BEGIN@@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-11-28" name="report_1" tests="7" failures="0" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="MockTest" package="suites" timestamp="2026-11-28T08:02:03" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.215">
+		<testcase name="test_mock_script_class" classname="MockTest" time="0.065">
+		</testcase>
+		<testcase name="test_spy_script_class" classname="MockTest" time="0.047">
+		</testcase>
+	</testsuite>
+	<testsuite id="1" name="PassingTest" package="suites" timestamp="2026-11-28T08:02:03" hostname="localhost" tests="5" failures="0" errors="0" skipped="0" flaky="0" time="0.131">
+		<testcase name="test_addition" classname="PassingTest" time="0.006">
+		</testcase>
+		<testcase name="test_platform_is_web" classname="PassingTest" time="0.021">
+		</testcase>
+		<testcase name="test_expected_engine_error" classname="PassingTest" time="0.010">
+		</testcase>
+		<testcase name="test_parameterized:0 (1, 2, 3)" classname="PassingTest" time="0.006">
+		</testcase>
+		<testcase name="test_parameterized:1 (2, 2, 4)" classname="PassingTest" time="0.004">
+		</testcase>
+	</testsuite>
+</testsuites>
+
+@@JUNIT-END@@
+Run dispose test resources
+web_test_runner: timings {"chrome_to_first_request_s": 0.101, "page_marks_ms": {"script": 0, "loaded": 133, "main": 1128, "exit": 1675}, "total_s": 2.006, "finished": true, "exit": "0"}
+web_test_runner: report channels ["bridge:results.xml", "indexeddb:/userfs/godot/app_userdata/gdunit web experiment/gdunit/report_1/results.xml", "log:results.xml"]
+/buildbuddy-execroot/external/bazel_tools/tools/test/test-setup.sh: line 331: file: command not found
+/buildbuddy-execroot/external/bazel_tools/tools/test/test-setup.sh: line 331: file: command not found
+/buildbuddy-execroot/external/bazel_tools/tools/test/test-setup.sh: line 331: file: command not found
+/buildbuddy-execroot/external/bazel_tools/tools/test/test-setup.sh: line 331: file: command not found
+/buildbuddy-execroot/external/bazel_tools/tools/test/test-setup.sh: line 331: file: command not found
+/buildbuddy-execroot/external/bazel_tools/tools/test/test-setup.sh: line 331: file: command not found

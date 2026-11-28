@@ -1,0 +1,58 @@
+INFO: Invocation ID: b9abd307-1e04-4293-9b5e-e5c95f400d07
+INFO: Streaming build results to: https://app.buildbuddy.io/invocation/b9abd307-1e04-4293-9b5e-e5c95f400d07
+Computing main repo mapping: 
+WARNING: Build option --toolchain_resolution_debug has changed, discarding analysis cache (this can be expensive, see https://bazel.build/advanced/performance/iteration-speed).
+
+INFO: ToolchainResolution: Performing resolution of @@bazel_tools//tools/test:default_test_toolchain_type for target platform @@autoload_rules_godot+//godot/platforms:web_wasm32
+      ToolchainResolution:   Rejected toolchain @@autoload_rules_godot+//godot/private/config:linux_arm32_test_toolchain; mismatching target_settings: linux_export_platform
+      ToolchainResolution:   Rejected toolchain @@autoload_rules_godot+//godot/private/config:linux_arm64_test_toolchain; mismatching target_settings: linux_export_platform
+      ToolchainResolution:   Rejected toolchain @@autoload_rules_godot+//godot/private/config:linux_rv64_test_toolchain; mismatching target_settings: linux_export_platform
+      ToolchainResolution:   Rejected toolchain @@autoload_rules_godot+//godot/private/config:linux_wasm32_test_toolchain; mismatching target_settings: linux_export_platform
+      ToolchainResolution:   Rejected toolchain @@autoload_rules_godot+//godot/private/config:linux_x86_32_test_toolchain; mismatching target_settings: linux_export_platform
+      ToolchainResolution:   Rejected toolchain @@autoload_rules_godot+//godot/private/config:linux_x86_64_test_toolchain; mismatching target_settings: linux_export_platform
+      ToolchainResolution:   Rejected toolchain @@autoload_rules_godot+//godot/private/config:macos_arm32_test_toolchain; mismatching target_settings: macos_export_platform
+      ToolchainResolution:   Rejected toolchain @@autoload_rules_godot+//godot/private/config:macos_arm64_test_toolchain; mismatching target_settings: macos_export_platform
+      ToolchainResolution:   Rejected toolchain @@autoload_rules_godot+//godot/private/config:macos_rv64_test_toolchain; mismatching target_settings: macos_export_platform
+      ToolchainResolution:   Rejected toolchain @@autoload_rules_godot+//godot/private/config:macos_wasm32_test_toolchain; mismatching target_settings: macos_export_platform
+      ToolchainResolution:   Rejected toolchain @@autoload_rules_godot+//godot/private/config:macos_x86_32_test_toolchain; mismatching target_settings: macos_export_platform
+      ToolchainResolution:   Rejected toolchain @@autoload_rules_godot+//godot/private/config:macos_x86_64_test_toolchain; mismatching target_settings: macos_export_platform
+      ToolchainResolution:   Rejected toolchain @@bazel_tools//tools/test:legacy_test_toolchain; mismatching target_settings: use_legacy_test_toolchain_due_to_incompatible_flag
+      ToolchainResolution:   Rejected toolchain @@bazel_tools//tools/test:legacy_test_toolchain_use_target_platform_for_tests; mismatching target_settings: use_legacy_test_toolchain_due_to_use_target_platform_for_tests
+      ToolchainResolution:   Toolchain //web_exp/toolchains:web_test_toolchain_linux_x86_64 (resolves to @@bazel_tools//tools/test:empty_toolchain) is compatible with target platform, searching for execution platforms:
+      ToolchainResolution:     Compatible execution platform @@toolchains_buildbuddy++buildbuddy+buildbuddy_toolchain//:platform_linux_x86_64
+      ToolchainResolution:     Incompatible execution platform @@platforms//host:host; mismatching values: linux, x86_64
+      ToolchainResolution:   Toolchain //web_exp/toolchains:web_test_toolchain_macos_arm64 (resolves to @@bazel_tools//tools/test:empty_toolchain) is compatible with target platform, searching for execution platforms:
+      ToolchainResolution:     Skipping execution platform @@toolchains_buildbuddy++buildbuddy+buildbuddy_toolchain//:platform_linux_x86_64; it has already selected a toolchain
+      ToolchainResolution:     Compatible execution platform @@platforms//host:host
+      ToolchainResolution:   All execution platforms have been assigned a @@bazel_tools//tools/test:default_test_toolchain_type toolchain, stopping
+      ToolchainResolution: Recap of selected @@bazel_tools//tools/test:default_test_toolchain_type toolchains for target platform @@autoload_rules_godot+//godot/platforms:web_wasm32:
+      ToolchainResolution:   Selected @@bazel_tools//tools/test:empty_toolchain to run on execution platform @@toolchains_buildbuddy++buildbuddy+buildbuddy_toolchain//:platform_linux_x86_64
+      ToolchainResolution:   Selected @@bazel_tools//tools/test:empty_toolchain to run on execution platform @@platforms//host:host
+INFO: ToolchainResolution: Target platform @@autoload_rules_godot+//godot/platforms:web_wasm32: Selected execution platform @@toolchains_buildbuddy++buildbuddy+buildbuddy_toolchain//:platform_linux_x86_64, type @@bazel_tools//tools/test:default_test_toolchain_type -> toolchain @@bazel_tools//tools/test:empty_toolchain
+
+INFO: Analyzed target //web_exp:gdunit_web_passing_test (164 packages loaded, 10029 targets configured).
+FAIL: //web_exp:gdunit_web_passing_test (Exit 1) (see /Users/gabriel/Library/Caches/bazel/_bazel_gabriel/37f6707a80a3e75a140368728a76980f/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs/web_exp/gdunit_web_passing_test/test.log)
+INFO: From Testing //web_exp:gdunit_web_passing_test:
+==================== Test output for //web_exp:gdunit_web_passing_test:
+web_test_runner: godot args ["--audio-driver", "Dummy", "--autoload-test", "--", "-a", "res://suites/MockTest.gd", "-a", "res://suites/PassingTest.gd"]
+web_test_runner: timings {"chrome_to_first_request_s": 50.007, "page_marks_ms": {}, "total_s": 50.007, "finished": false, "exit": null}
+web_test_runner: report channels []
+../rules_browsers++browsers+rules_browsers_chrome_linux/chrome-headless-shell-linux64/chrome-headless-shell: error while loading shared libraries: libnspr4.so: cannot open shared object file: No such file or directory
+web_test_runner: no exit within 50.0s
+================================================================================
+INFO: Found 1 test target...
+Target //web_exp:gdunit_web_passing_test up-to-date:
+  bazel-bin/web_exp/gdunit_web_passing_test.sh
+INFO: Elapsed time: 97.132s, Critical Path: 84.71s
+INFO: 196 processes: 164 internal, 33 remote.
+INFO: Build completed, 1 test FAILED, 196 total actions
+INFO: 
+//web_exp:gdunit_web_passing_test                                        FAILED in 50.6s
+  /Users/gabriel/Library/Caches/bazel/_bazel_gabriel/37f6707a80a3e75a140368728a76980f/execroot/_main/bazel-out/darwin_arm64-fastbuild/testlogs/web_exp/gdunit_web_passing_test/test.log
+
+Executed 1 out of 1 test: 1 fails remotely.
+INFO: Streaming build results to: https://app.buildbuddy.io/invocation/b9abd307-1e04-4293-9b5e-e5c95f400d07
+bazel test //web_exp:gdunit_web_passing_test --config=webtest    2>&1  0.06s user 0.06s system 0% cpu 1:37.21 total
+grep -v   0.03s user 0.06s system 0% cpu 1:37.21 total
+grep -v "^\s*\[\|^\s*at:\|GDScript backtrace"  0.04s user 0.06s system 0% cpu 1:37.21 total
+tail -60  0.00s user 0.00s system 0% cpu 1:37.21 total

@@ -1,0 +1,1028 @@
+[
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_release",
+  "case": "ready_c0",
+  "expected": 0,
+  "runs": 20,
+  "correct_code": 0,
+  "statuses": {
+   "timeout": 20
+  },
+  "codes": [
+   124
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 0,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 207,
+   "median": 227,
+   "p90": 272,
+   "max": 306
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 535,
+   "median": 587,
+   "p90": 701,
+   "max": 711
+  },
+  "page_exit_ms": null,
+  "wall_total_ms": null,
+  "page_errors": [
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:63745/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:63794/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:63825/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:63928/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:63968/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64017/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64062/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64088/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64113/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64140/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64165/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64189/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64213/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64258/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64308/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64332/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64358/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64382/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64406/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64430/index.js:1:"
+  ],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_release",
+  "case": "ready_c3",
+  "expected": 3,
+  "runs": 20,
+  "correct_code": 0,
+  "statuses": {
+   "timeout": 20
+  },
+  "codes": [
+   124
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 0,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 210,
+   "median": 219,
+   "p90": 601,
+   "max": 650
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 539,
+   "median": 560,
+   "p90": 1154,
+   "max": 1195
+  },
+  "page_exit_ms": null,
+  "wall_total_ms": null,
+  "page_errors": [
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64454/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64485/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64510/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64535/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64560/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64584/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64611/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64635/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64660/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64684/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64709/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64736/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64762/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64788/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64817/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64843/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64882/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64931/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64955/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:64988/index.js:1:"
+  ],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_release",
+  "case": "frames2_c3",
+  "expected": 3,
+  "runs": 20,
+  "correct_code": 0,
+  "statuses": {
+   "timeout": 20
+  },
+  "codes": [
+   124
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 0,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 209,
+   "median": 228,
+   "p90": 423,
+   "max": 693
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 533,
+   "median": 598,
+   "p90": 837,
+   "max": 1117
+  },
+  "page_exit_ms": null,
+  "wall_total_ms": null,
+  "page_errors": [
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:49209/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:49264/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:49290/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:49346/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:49382/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:49406/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:49433/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:65018/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:65048/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:65084/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:65108/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:65137/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:65176/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:65245/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:65288/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:65333/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:65373/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:65409/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:65458/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:65527/index.js:1:"
+  ],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_release",
+  "case": "frames10_c3",
+  "expected": 3,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   3
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 205,
+   "median": 208,
+   "p90": 214,
+   "max": 222
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 526,
+   "median": 531,
+   "p90": 539,
+   "max": 545
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 670,
+   "median": 677,
+   "p90": 684,
+   "max": 685
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 733,
+   "median": 745,
+   "p90": 753,
+   "max": 776
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_release",
+  "case": "frames60_c0",
+  "expected": 0,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   0
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 203,
+   "median": 208,
+   "p90": 212,
+   "max": 215
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 526,
+   "median": 530,
+   "p90": 536,
+   "max": 545
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 1090,
+   "median": 1099,
+   "p90": 1107,
+   "max": 1113
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 1155,
+   "median": 1168,
+   "p90": 1177,
+   "max": 1179
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_release",
+  "case": "frames60_c42",
+  "expected": 42,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   42
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 204,
+   "median": 208,
+   "p90": 211,
+   "max": 214
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 525,
+   "median": 529,
+   "p90": 533,
+   "max": 536
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 1089,
+   "median": 1099,
+   "p90": 1102,
+   "max": 1103
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 1159,
+   "median": 1166,
+   "p90": 1171,
+   "max": 1171
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_release",
+  "case": "frames60_c255",
+  "expected": 255,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   255
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 200,
+   "median": 207,
+   "p90": 210,
+   "max": 213
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 522,
+   "median": 528,
+   "p90": 532,
+   "max": 533
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 1088,
+   "median": 1095,
+   "p90": 1100,
+   "max": 1102
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 1154,
+   "median": 1164,
+   "p90": 1170,
+   "max": 1171
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_release",
+  "case": "ready_dummyaudio_c5",
+  "expected": 5,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   5
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 204,
+   "median": 207,
+   "p90": 211,
+   "max": 213
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 427,
+   "median": 431,
+   "p90": 434,
+   "max": 438
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 507,
+   "median": 515,
+   "p90": 520,
+   "max": 524
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 577,
+   "median": 586,
+   "p90": 594,
+   "max": 595
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_release",
+  "case": "headless_ready_c9",
+  "expected": 9,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   9
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 202,
+   "median": 206,
+   "p90": 209,
+   "max": 210
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 356,
+   "median": 361,
+   "p90": 364,
+   "max": 364
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 375,
+   "median": 382,
+   "p90": 386,
+   "max": 387
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 444,
+   "median": 448,
+   "p90": 455,
+   "max": 455
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_debug",
+  "case": "ready_c0",
+  "expected": 0,
+  "runs": 20,
+  "correct_code": 0,
+  "statuses": {
+   "timeout": 20
+  },
+  "codes": [
+   124
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 0,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 202,
+   "median": 206,
+   "p90": 231,
+   "max": 236
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 514,
+   "median": 521,
+   "p90": 576,
+   "max": 592
+  },
+  "page_exit_ms": null,
+  "wall_total_ms": null,
+  "page_errors": [
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52274/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52299/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52323/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52348/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52372/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52395/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52419/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52443/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52467/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52491/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52521/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52549/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52575/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52599/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52627/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52653/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52679/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52703/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52742/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52781/index.js:1:"
+  ],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_debug",
+  "case": "ready_c3",
+  "expected": 3,
+  "runs": 20,
+  "correct_code": 0,
+  "statuses": {
+   "timeout": 20
+  },
+  "codes": [
+   124
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 0,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 206,
+   "median": 232,
+   "p90": 693,
+   "max": 885
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 523,
+   "median": 587,
+   "p90": 1376,
+   "max": 1445
+  },
+  "page_exit_ms": null,
+  "wall_total_ms": null,
+  "page_errors": [
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52837/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52869/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52896/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52921/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:52975/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53012/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53036/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53060/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53088/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53116/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53141/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53165/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53213/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53274/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53332/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53376/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53414/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53458/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53528/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53555/index.js:1:"
+  ],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_debug",
+  "case": "frames2_c3",
+  "expected": 3,
+  "runs": 20,
+  "correct_code": 0,
+  "statuses": {
+   "timeout": 20
+  },
+  "codes": [
+   124
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 0,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 205,
+   "median": 303,
+   "p90": 432,
+   "max": 455
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 530,
+   "median": 799,
+   "p90": 932,
+   "max": 1003
+  },
+  "page_exit_ms": null,
+  "wall_total_ms": null,
+  "page_errors": [
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53602/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53642/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53690/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53778/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53832/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53859/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53887/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53913/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53945/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53972/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:53996/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:54035/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:54079/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:54118/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:54152/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:54180/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:54204/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:54243/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:54269/index.js:1:",
+   "unhandled rejection: TypeError: parameter 1 is not of type 'BaseAudioContext'.\n    at http://127.0.0.1:54320/index.js:1:"
+  ],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_debug",
+  "case": "frames10_c3",
+  "expected": 3,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   3
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 214,
+   "median": 243,
+   "p90": 302,
+   "max": 320
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 562,
+   "median": 614,
+   "p90": 797,
+   "max": 819
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 722,
+   "median": 797,
+   "p90": 995,
+   "max": 1028
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 795,
+   "median": 877,
+   "p90": 1105,
+   "max": 1209
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_debug",
+  "case": "frames60_c0",
+  "expected": 0,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   0
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 212,
+   "median": 278,
+   "p90": 356,
+   "max": 356
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 540,
+   "median": 733,
+   "p90": 860,
+   "max": 878
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 1123,
+   "median": 1345,
+   "p90": 1527,
+   "max": 1629
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 1193,
+   "median": 1434,
+   "p90": 1700,
+   "max": 1898
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_debug",
+  "case": "frames60_c42",
+  "expected": 42,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   42
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 217,
+   "median": 233,
+   "p90": 262,
+   "max": 326
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 567,
+   "median": 610,
+   "p90": 633,
+   "max": 672
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 1142,
+   "median": 1199,
+   "p90": 1221,
+   "max": 1254
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 1214,
+   "median": 1278,
+   "p90": 1303,
+   "max": 1333
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_debug",
+  "case": "frames60_c255",
+  "expected": 255,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   255
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 229,
+   "median": 238,
+   "p90": 255,
+   "max": 264
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 603,
+   "median": 618,
+   "p90": 648,
+   "max": 676
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 1193,
+   "median": 1208,
+   "p90": 1235,
+   "max": 1271
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 1270,
+   "median": 1290,
+   "p90": 1322,
+   "max": 1347
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_debug",
+  "case": "ready_dummyaudio_c5",
+  "expected": 5,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   5
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 229,
+   "median": 239,
+   "p90": 257,
+   "max": 259
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 482,
+   "median": 493,
+   "p90": 511,
+   "max": 512
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 586,
+   "median": 598,
+   "p90": 615,
+   "max": 620
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 669,
+   "median": 682,
+   "p90": 704,
+   "max": 704
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ },
+ {
+  "matrix": "th-swiftshader",
+  "export": "th_debug",
+  "case": "headless_ready_c9",
+  "expected": 9,
+  "runs": 20,
+  "correct_code": 20,
+  "statuses": {
+   "exit": 20
+  },
+  "codes": [
+   9
+  ],
+  "all_output_before_exit": true,
+  "complete_log": 20,
+  "first_stdout_ms": {
+   "n": 20,
+   "min": 229,
+   "median": 236,
+   "p90": 252,
+   "max": 255
+  },
+  "ready_ms": {
+   "n": 20,
+   "min": 406,
+   "median": 413,
+   "p90": 428,
+   "max": 436
+  },
+  "page_exit_ms": {
+   "n": 20,
+   "min": 429,
+   "median": 440,
+   "p90": 455,
+   "max": 459
+  },
+  "wall_total_ms": {
+   "n": 20,
+   "min": 511,
+   "median": 521,
+   "p90": 539,
+   "max": 544
+  },
+  "page_errors": [],
+  "loads": [
+   1
+  ],
+  "webgl2": [
+   "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)"
+  ],
+  "isolated": [
+   true
+  ]
+ }
+]
