@@ -5,7 +5,7 @@ cc_library of the extension's code, its godot_extension_library and its godot_ex
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load(":extension.bzl", "source_extension", "tool_view_of")
-load(":extension_library.bzl", "RULE_ATTRS", "godot_extension_library", "private_target_attrs")
+load(":extension_library.bzl", "godot_extension_library", "private_target_attrs", "rule_attrs")
 
 visibility(["//godot/extension"])
 
@@ -34,7 +34,7 @@ def _cc_extension_impl(
     generated = private_target_attrs(kwargs, tags)
     code = name + ".native"
 
-    # Every link takes the code whole, as it would take a library of godot-cpp's own build.
+    # Linked whole, so static registrations survive every link.
     cc_library(
         name = code,
         srcs = srcs,
@@ -52,9 +52,9 @@ def _cc_extension_impl(
         library_name = name,
         ios_linkage = ios_linkage,
         ios_bundle_id = ios_bundle_id,
-        # The cc_library links statically anyway; linkstatic is the shared library's.
+        # linkstatic reaches only the shared library; the cc_library always links statically.
         linkstatic = linkstatic,
-        **(generated | {key: kwargs[key] for key in RULE_ATTRS if key in kwargs})
+        **(generated | rule_attrs(kwargs))
     )
     source_extension(
         name = name,
@@ -83,7 +83,7 @@ godot_cc_extension = macro(
     Build a C++ extension the same way on every platform: its code as a cc_library, the
     godot_extension_library linked from it and the godot_extension of that library.
 
-    The macro declares the three primitives and nothing else; an extension that supports
+    The macro declares the three parts and the extension's tool view; an extension that supports
     only some platforms, mixes prebuilt and built libraries or is written in another
     language declares them itself. On iOS the library is a dynamic framework the
     application embeds and signs; with ios_linkage = "static", iOS takes the archive
@@ -99,7 +99,7 @@ godot_cc_extension = macro(
     the host editor load. The public target exposes GodotExtensionInfo, DefaultInfo and,
     on iOS, CcInfo. copts, defines, local_defines, includes and linkopts reach the
     cc_library; the attributes every rule has, such as features or exec_compatible_with,
-    also reach the library, and linkstatic reaches only it. Compilation uses rules_cc
+    also reach the library, and linkstatic reaches only the library. Compilation uses rules_cc
     toolchains. The feature tags of the libraries derive from the target platform's
     operating system and CPU, the iOS environment and the variant; features keeps its
     meaning as rules_cc toolchain features. An editor-specific backend is a select()

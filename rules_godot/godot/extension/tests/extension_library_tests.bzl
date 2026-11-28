@@ -1,10 +1,9 @@
 """
 What a godot_extension_library hands a godot_extension, and what the extension checks.
 
-The library passes its entry symbol on, so an extension of a built library needs none of its
-own; an extension whose entry symbol differs from its library's fails, and so does one
-whose prebuilt library carries none and that names none. The library's file is named after
-library_name.
+The library passes its entry symbol on, so an extension of it needs none of its own. The
+extension fails when its entry_symbol differs from the library's, or when its library
+carries none and it names none. The library's file is named after library_name.
 """
 
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test")

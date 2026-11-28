@@ -82,7 +82,6 @@ cc_library(
     deps = ["@godot_cpp//:godot_cpp"],
 )
 
-# The code linked as Godot loads it on the target platform.
 godot_extension_library(
     name = "paths_library",
     deps = [":paths"],
@@ -102,11 +101,12 @@ godot_extension(
 ```
 
 `godot_extension_library` links what its `deps` provide into the one file the target
-platform loads, exports only the entry symbol and lets the library find its shared
-dependencies beside it. The link keeps the entry symbol's object and what it references; code
-that nothing references, such as a static registration, needs `alwayslink = True` on its
-`cc_library`, as `godot_cc_extension` sets for its own. It passes the entry symbol on, so the extension does not
-repeat it; an extension whose `entry_symbol` differs from its library's fails analysis.
+platform loads. It exports only the entry symbol and finds its shared dependencies beside
+it. The link keeps the entry symbol's object and what it references; code that nothing
+references, such as a static registration, needs `alwayslink = True` on its `cc_library`,
+as `godot_cc_extension` sets for its own. The library passes the entry symbol on, so the
+extension does not repeat it; an extension whose `entry_symbol` differs from its library's
+fails analysis.
 
 | Operating system | What `godot_extension_library` produces |
 | --- | --- |
@@ -116,7 +116,7 @@ repeat it; an extension whose `entry_symbol` differs from its library's fails an
 
 `library_name` is the target's name by default; `godot_cc_extension` names the library
 after the extension, so `game_extension` delivers `libgame_extension.so`. A prebuilt file
-carries no entry symbol, so an extension that has one names it:
+carries no entry symbol, so an extension of a prebuilt file names it:
 
 ```starlark
 godot_extension(

@@ -150,7 +150,7 @@ def _shared_library_exports_only_the_entry_symbol(env, target):
     env.expect.that_collection(scripts).has_size(1)
     env.expect.that_collection(links.argv).contains("-Wl,--version-script," + scripts[0])
 
-def _test_hdrs_reach_the_archive_the_shared_library_links(name):
+def _test_hdrs_reach_the_code_the_shared_library_links(name):
     fixture_file(
         name = name + "_header",
         out = name + "_fixture.h",
@@ -164,14 +164,15 @@ def _test_hdrs_reach_the_archive_the_shared_library_links(name):
             "archive": name + "_extension.library.archive",
             "shared": _shared(name),
         },
-        impl = _hdrs_reach_the_archive_the_shared_library_links,
+        impl = _hdrs_reach_the_code_the_shared_library_links,
         attrs = {"header": attr.string()},
         attr_values = _SMALL | {"header": name + "_fixture.h"},
     )
 
 # Compile actions discover their headers at execution, so analysis sees the headers in the
-# code's hdrs; the shared library compiles nothing and links the library's archive of it.
-def _hdrs_reach_the_archive_the_shared_library_links(env, targets):
+# code's hdrs. The shared library compiles nothing; it links the library's archive, which
+# holds the code.
+def _hdrs_reach_the_code_the_shared_library_links(env, targets):
     files = [
         file.basename
         for dependency in targets.code[TestingAspectInfo].attrs.hdrs
@@ -360,7 +361,7 @@ def cc_extension_test_suite(name):
             _test_tool_view_is_the_tool_configuration,
             _test_shared_library_finds_its_dependencies_beside_it,
             _test_shared_library_exports_only_the_entry_symbol,
-            _test_hdrs_reach_the_archive_the_shared_library_links,
+            _test_hdrs_reach_the_code_the_shared_library_links,
             _test_descriptor_attributes_reach_both_extensions,
             _test_minimum_os_versions_reach_extension_info,
             _test_ios_extension_is_a_framework,

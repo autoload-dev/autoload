@@ -1,6 +1,8 @@
 """
 godot_extension_library: native code linked into the one file Godot loads on the target
 platform, and the provider that hands it and its entry symbol to godot_extension.
+
+Sections: Provider and shared attributes, Library linking.
 """
 
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
@@ -11,8 +13,10 @@ load(":ios_framework.bzl", "ios_framework")
 
 visibility(["//godot/extension", "//godot/extension/private"])
 
+# ==== Provider and shared attributes ==========================================
+
 GodotExtensionLibraryInfo = provider(
-    doc = "An extension library that godot_extension_library linked, as one configuration has it.",
+    doc = "The extension library of one configuration, with its entry symbol.",
     fields = {
         "entry_symbol": "string: the GDExtension entry symbol, the only symbol the library exports",
         "library": "Target: the shared library, framework import or archive of this configuration",
@@ -20,7 +24,19 @@ GodotExtensionLibraryInfo = provider(
 )
 
 # Attributes every rule has, which the extension macros pass to the targets they declare.
-RULE_ATTRS = ["compatible_with", "deprecation", "exec_compatible_with", "exec_properties", "features", "restricted_to", "toolchains"]
+_RULE_ATTRS = [
+    "compatible_with",
+    "deprecation",
+    "exec_compatible_with",
+    "exec_properties",
+    "features",
+    "restricted_to",
+    "toolchains",
+]
+
+def rule_attrs(kwargs):
+    """Return the attributes every rule has among an extension macro's set attributes."""
+    return {key: kwargs[key] for key in _RULE_ATTRS if key in kwargs}
 
 def private_target_attrs(kwargs, tags):
     """
@@ -31,38 +47,16 @@ def private_target_attrs(kwargs, tags):
         tags: The macro's tags.
 
     Returns:
-        testonly and target_compatible_with where set, the caller's package as visibility
-        and the tags with manual: the extension builds them in its own configuration.
+        testonly and target_compatible_with where set, visibility for the caller's
+        package, and the tags plus manual: the extension builds these targets in its own
+        configuration, so wildcard builds skip them.
     """
     return {key: kwargs[key] for key in ["testonly", "target_compatible_with"] if key in kwargs} | {
         "visibility": CALLER_PACKAGE,
         "tags": tags + ["manual"],
     }
 
-def _extension_library_rule_impl(ctx):
-    library = ctx.attr.library
-    return [
-        DefaultInfo(files = library[DefaultInfo].files, runfiles = library[DefaultInfo].default_runfiles),
-        GodotExtensionLibraryInfo(entry_symbol = ctx.attr.entry_symbol, library = library),
-    ]
-
-_extension_library = rule(
-    doc = "The extension library of the configuration's operating system, with its entry symbol.",
-    implementation = _extension_library_rule_impl,
-    attrs = {
-        "library": attr.label(doc = "The linked library of this configuration.", mandatory = True),
-        "entry_symbol": attr.string(doc = "The library's GDExtension entry symbol.", mandatory = True),
-    },
-)
-
-def _is_c_identifier(text):
-    """Whether text is a C identifier: letters, digits and _, not starting with a digit."""
-    letters = text.replace("_", "a")
-    return letters.isalnum() and not letters[0].isdigit()
-
-def _require_c_identifier(entry_symbol):
-    if not _is_c_identifier(entry_symbol):
-        fail("entry_symbol must be a C identifier; got %r" % entry_symbol)
+# ==== Library linking =========================================================
 
 def _keep_entry_source(name, entry_symbol, generated):
     """
@@ -143,6 +137,31 @@ def _shared_library(name, archive, library_name, entry_symbol, attrs):
     )
     return shared
 
+def _extension_library_rule_impl(ctx):
+    library = ctx.attr.library
+    return [
+        DefaultInfo(files = library[DefaultInfo].files, runfiles = library[DefaultInfo].default_runfiles),
+        GodotExtensionLibraryInfo(entry_symbol = ctx.attr.entry_symbol, library = library),
+    ]
+
+_extension_library = rule(
+    doc = "The extension library of the configuration's operating system, with its entry symbol.",
+    implementation = _extension_library_rule_impl,
+    attrs = {
+        "library": attr.label(doc = "The linked library of this configuration.", mandatory = True),
+        "entry_symbol": attr.string(doc = "The library's GDExtension entry symbol.", mandatory = True),
+    },
+)
+
+def _is_c_identifier(text):
+    """Whether text is a C identifier: letters, digits and _, not starting with a digit."""
+    letters = text.replace("_", "a")
+    return letters.isalnum() and not letters[0].isdigit()
+
+def _require_c_identifier(entry_symbol):
+    if not _is_c_identifier(entry_symbol):
+        fail("entry_symbol must be a C identifier; got %r" % entry_symbol)
+
 def _godot_extension_library_impl(
         name,
         visibility,
@@ -162,12 +181,12 @@ def _godot_extension_library_impl(
     # Unset attributes stay unset on the declared targets.
     kwargs = {key: value for key, value in kwargs.items() if value != None}
     generated = private_target_attrs(kwargs, tags)
-    rule_attrs = {key: kwargs[key] for key in RULE_ATTRS if key in kwargs}
+    common = rule_attrs(kwargs)
     keep = _keep_entry_source(name, entry_symbol, generated)
 
-    # The entry symbol's reference, linked whole, and the code. On iOS with static linkage
-    # it is the archive the application links; the classification of the extension needs
-    # an archive of the library's own there.
+    # The code and the reference to the entry symbol, linked whole. With static linkage on
+    # iOS the application links this archive; godot_extension accepts a static library
+    # only by an archive the target owns, which the code's own archives are not.
     archive = name + ".archive"
     cc_library(
         name = archive,
@@ -176,9 +195,9 @@ def _godot_extension_library_impl(
         linkopts = linkopts,
         alwayslink = True,
         linkstatic = True,
-        **(generated | rule_attrs)
+        **(generated | common)
     )
-    shared = _shared_library(name, archive, library_name, entry_symbol, generated | rule_attrs | {"linkstatic": linkstatic})
+    shared = _shared_library(name, archive, library_name, entry_symbol, generated | common | {"linkstatic": linkstatic})
     ios_library = ios_framework(name, shared, library_name, ios_bundle_id, generated) if ios_linkage == "framework" else archive
     _extension_library(
         name = name,
@@ -189,17 +208,17 @@ def _godot_extension_library_impl(
         entry_symbol = entry_symbol,
         visibility = visibility,
         tags = tags,
-        **({key: value for key, value in generated.items() if key not in ["visibility", "tags"]} | rule_attrs)
+        **({key: kwargs[key] for key in ["testonly", "target_compatible_with"] if key in kwargs} | common)
     )
 
 godot_extension_library = macro(
     doc = """
     Link native code into the extension library Godot loads on the target platform.
 
-    The library links what deps provide into one file, exports only the entry symbol, so
-    extensions in one process never run each other's godot-cpp, and finds its shared
-    dependencies beside it. It passes the entry symbol on, so a godot_extension of it
-    names none.
+    It links what deps provide into one file and finds its shared dependencies beside it.
+    It exports only the entry symbol, so extensions in one process never run each other's
+    godot-cpp. The entry symbol goes on to the godot_extension, which names none of its
+    own.
 
     | Operating system | What it produces |
     | --- | --- |
@@ -209,10 +228,12 @@ godot_extension_library = macro(
 
     The link keeps the object that defines the entry symbol and what it references; code
     that nothing references, such as a static registration, stays only when its
-    cc_library sets alwayslink, as godot_cc_extension's does. Creates the named target, which provides the library of
-    the configuration, and the private targets `<name>.archive`, the code with a
-    reference to the entry symbol, `<name>.shared/lib<library_name>.so`, the shared
-    library, and on iOS `<name>.ios_framework`, the framework import.
+    cc_library sets alwayslink, as godot_cc_extension's does.
+
+    Creates the named target, which provides the library of the configuration, and the
+    private targets `<name>.archive`, the code with a reference to the entry symbol,
+    `<name>.shared/lib<library_name>.so`, the shared library, and on iOS
+    `<name>.ios_framework`, the framework import.
 
     Example:
     ```starlark

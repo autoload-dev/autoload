@@ -52,8 +52,8 @@ def _resolved_library(ctx, target):
     """
     Return the target that supplies the configured library, and the entry symbol.
 
-    A godot_extension_library passes its own on; a prebuilt library carries none, so the
-    extension names it.
+    A godot_extension_library carries its entry symbol. A library from any other rule, or
+    a prebuilt file, carries none, so the extension names it.
     """
     if GodotExtensionLibraryInfo in target:
         info = target[GodotExtensionLibraryInfo]
@@ -216,9 +216,9 @@ _OWN_ATTRS = {
     "entry_symbol": attr.string(
         doc = """
         Exported Godot initialization function, identical for every extension library.
-        A godot_extension_library passes its own on, so it is needed only for a library
-        another rule linked or a prebuilt file, and must agree with a
-        godot_extension_library's.
+        Needed only when the library comes from another rule or is a prebuilt file; a
+        godot_extension_library passes its own on, and a value set beside one must equal
+        it.
         """,
     ),
     "compatibility_minimum": attr.string(
@@ -368,7 +368,8 @@ godot_extension = macro(
     descriptor fragment with its one library entry; packs merge the fragments of their
     platform slices. The extension links nothing itself: it takes a
     godot_extension_library, or a library as another rule linked it, in any language, or
-    a prebuilt file; godot_cc_extension is the C++ shorthand over the three. Editor
+    a prebuilt file; godot_cc_extension is the C++ shorthand that declares the code, its
+    library and the extension. Editor
     actions and the host editor load the library of the tool configuration, where
     @autoload_rules_godot//godot:tool and :editor match; a select() with a branch for each
     execution platform's operating system needs no tool branch. Platform libraries that
