@@ -3,15 +3,19 @@ Package metadata of the repositories the ruleset's repository rules create.
 
 SBOM and license tools read a target's package metadata (bazel-contrib/supply-chain): a
 repository that writes it in REPO.bazel gives it to every one of its targets, wherever they
-end up, such as a runtime in an exported application.
+end up, such as a runtime in an exported application. Each library a Godot COPYRIGHT.txt
+lists is a package of its own beside Godot's.
 
-Sections: Package URLs, Repository metadata.
+Sections: Package URLs, Bundled libraries, Repository metadata.
 """
 
 load("@package_metadata//purl:purl.bzl", "purl")
 load(":copyright.bzl", "bundled_libraries", "words_of")
 
 visibility("//godot/...")
+
+# The package that holds the metadata, apart from the packages the repository generates.
+_PACKAGE = "_package_metadata"
 
 # ==== Package URLs ============================================================
 
@@ -74,40 +78,16 @@ def source_purl(name, version = "", sha256 = "", integrity = ""):
         builder.add_qualifier("checksum", checksum)
     return builder.build()
 
-# ==== Repository metadata =====================================================
-
-# The package that holds the metadata, apart from the packages the repository generates.
-_PACKAGE = "_package_metadata"
+# ==== Bundled libraries =======================================================
 
 # SBOM tools give each target of a build graph one package, the first of its package
-# metadata, so each bundled library has a target of its own that carries its metadata, and
-# the targets that hold the software depend on them through BUNDLED_PACKAGES. The targets
-# carry no files. The package's own targets carry no metadata.
-_HEADER = """\
-load({license_bzl}, "license")
-load({license_kind_bzl}, "license_kind")
-load({package_metadata_bzl}, "package_metadata")
+# metadata, so each library Godot bundles has a target of its own that carries its
+# metadata, and the targets that hold the software depend on them through
+# BUNDLED_PACKAGES. The targets carry no files.
 
-package(default_package_metadata = [])
-
-package_metadata(
-    name = "package_metadata",
-    attributes = [":license"],
-    purl = {purl},
-    visibility = ["//visibility:public"],
-)
-
-license(
-    name = "license",
-    kind = {kind},
-{text})
-
-filegroup(
-    name = "bundled_packages",
-    srcs = {packages},
-    visibility = ["//visibility:public"],
-)
-"""
+# The label of the targets that carry the metadata of the libraries the software bundles,
+# for the targets that hold the software; without any, it is empty.
+BUNDLED_PACKAGES = "//%s:bundled_packages" % _PACKAGE
 
 # A bundled library: the target that carries its package metadata, the metadata and its
 # license, whose text is the library's part of COPYRIGHT.txt.
@@ -142,13 +122,6 @@ license_kind(
     identifier = {identifier},
 )
 """
-
-# The label of the metadata, for a package of a repository that only some packages carry.
-PACKAGE_METADATA = "//%s:package_metadata" % _PACKAGE
-
-# The label of the targets that carry the metadata of the libraries the software bundles,
-# for the targets that hold the software; without any, it is empty.
-BUNDLED_PACKAGES = "//%s:bundled_packages" % _PACKAGE
 
 def _target_name(name, taken):
     """A target name of a library's name, lower case with underscores, unique among taken."""
@@ -190,6 +163,38 @@ def _libraries(repository_ctx, copyright):
     for library in bundled_libraries(repository_ctx.read(copyright)):
         declarations.append(_library(repository_ctx, library, _target_name(library.name, taken)))
     return declarations, list(taken)
+
+# ==== Repository metadata =====================================================
+
+# The metadata package; its own targets carry no metadata.
+_HEADER = """\
+load({license_bzl}, "license")
+load({license_kind_bzl}, "license_kind")
+load({package_metadata_bzl}, "package_metadata")
+
+package(default_package_metadata = [])
+
+package_metadata(
+    name = "package_metadata",
+    attributes = [":license"],
+    purl = {purl},
+    visibility = ["//visibility:public"],
+)
+
+license(
+    name = "license",
+    kind = {kind},
+{text})
+
+filegroup(
+    name = "bundled_packages",
+    srcs = {packages},
+    visibility = ["//visibility:public"],
+)
+"""
+
+# The label of the metadata, for a package of a repository that only some packages carry.
+PACKAGE_METADATA = "//%s:package_metadata" % _PACKAGE
 
 def write_package_metadata(repository_ctx, package_url, license_text = None, copyright = None):
     """

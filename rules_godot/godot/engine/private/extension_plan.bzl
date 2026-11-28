@@ -537,14 +537,36 @@ def runtime_profiles(modules, read):
 
 # ==== Declarations ============================================================
 
+def _copyright_of(part):
+    """The copyright attribute of a binary's repository, where the catalogue pins its file."""
+    return {"copyright": part.copyright} if part.copyright else {}
+
+def _copyright_declarations(engine, release, parts):
+    """
+    Return the download of the COPYRIGHT.txt the catalogue pins, where binary parts take it.
+
+    Args:
+        engine: The godot_engines.engine tag.
+        release: The catalogue's release of the engine's version, or None.
+        parts: The editors, templates and shells of the engine's binaries plan.
+
+    Returns:
+        The http_file declarations, none or one.
+    """
+    if not [part for part in parts if part.copyright]:
+        return []
+    return [_declaration(
+        "http_file",
+        name = _copyright_repository(engine.name),
+        urls = release["copyright"]["urls"],
+        sha256 = release["copyright"]["sha256"],
+        downloaded_file_path = "COPYRIGHT.txt",
+    )]
+
 # The file name of a downloaded export-template archive. The platform repositories
 # extract the file itself, so they name it rather than the archive repository's //file
 # target.
 _ARCHIVE_FILE = "export_templates.tpz"
-
-def _copyright_of(part):
-    """The copyright attribute of a binary's repository, where the catalogue pins its file."""
-    return {"copyright": part.copyright} if part.copyright else {}
 
 def _templates_declarations(engine, templates):
     """
@@ -625,28 +647,6 @@ def _shell_declarations(engine, shells):
         android_runtimes[variant] = {"shell": "@%s//file" % name}
     return declarations, android_runtimes
 
-def _copyright_declarations(engine, release, parts):
-    """
-    Return the download of the COPYRIGHT.txt the catalogue pins, where binary parts take it.
-
-    Args:
-        engine: The godot_engines.engine tag.
-        release: The catalogue's release of the engine's version, or None.
-        parts: The editors, templates and shells of the engine's binaries plan.
-
-    Returns:
-        The http_file declarations, none or one.
-    """
-    if not [part for part in parts if part.copyright]:
-        return []
-    return [_declaration(
-        "http_file",
-        name = _copyright_repository(engine.name),
-        urls = release["copyright"]["urls"],
-        sha256 = release["copyright"]["sha256"],
-        downloaded_file_path = "COPYRIGHT.txt",
-    )]
-
 def _binary_declarations(engine, release, plan):
     """
     Return the repositories of an engine's binaries and what its hub takes of them.
@@ -666,7 +666,7 @@ def _binary_declarations(engine, release, plan):
     declarations += _editor_declarations(engine, plan.editors)
     declarations += _templates_declarations(engine, plan.templates) + shells
 
-    # The hub's Android runtimes wrap the shells.
+    # The hub's Android runtimes wrap the shells, so they take the shells' COPYRIGHT.txt.
     copyrights = [shell.copyright for shell in plan.android_shells.values() if shell.copyright]
     return struct(
         declarations = declarations,

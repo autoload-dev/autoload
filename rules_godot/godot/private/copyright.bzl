@@ -45,10 +45,6 @@ def _fields(lines):
             fields[key.strip()] = values
     return fields
 
-def words_of(text):
-    """The words of text, split at spaces and tabs."""
-    return [word for word in text.replace("\t", " ").split(" ") if word]
-
 # ==== Licenses ================================================================
 
 # The SPDX identifier of each of Godot's license short names on an SPDX list: Godot writes
@@ -84,6 +80,10 @@ _SPDX = {
 
 _OPERATORS = {"and": "AND", "or": "OR"}
 
+def words_of(text):
+    """The words of text, split at spaces and tabs."""
+    return [word for word in text.replace("\t", " ").split(" ") if word]
+
 def _reference(text):
     """A LicenseRef of text: its letters, digits, dots and dashes, other characters as dashes."""
     return "LicenseRef-" + "".join([
@@ -111,7 +111,7 @@ def spdx_license(license):
         return _reference("-".join(words))
     return " ".join(identifiers)
 
-def license_names(license):
+def _license_names(license):
     """The short names of a License field's first line, without its operators."""
     return [word for word in words_of(license) if word not in _OPERATORS]
 
@@ -121,6 +121,48 @@ def _library_name(fields):
     """The name of a Files paragraph's library: its Comment, or its first file pattern."""
     comment = fields.get("Comment")
     return comment[0] if comment and comment[0] else fields["Files"][0].split(" ")[0]
+
+def _files_by_library(paragraphs):
+    """The Files paragraphs but Godot's own by library name: structs of their licenses and texts."""
+    libraries = {}
+    for lines, fields in paragraphs:
+        if "Files" not in fields or fields["Files"] == ["*"]:
+            continue
+        library = libraries.setdefault(_library_name(fields), struct(licenses = [], paragraphs = []))
+        if fields["License"][0] not in library.licenses:
+            library.licenses.append(fields["License"][0])
+        library.paragraphs.append("\n".join(lines))
+    return libraries
+
+def _grouped(expression, operator, count):
+    """An expression in parentheses where it joins others with AND but holds operator itself."""
+    return "(%s)" % expression if count > 1 and operator in expression else expression
+
+def _short_names(licenses):
+    """The distinct short names of License fields, in order."""
+    return {name: True for license in licenses for name in _license_names(license)}.keys()
+
+def _joined_spdx(licenses):
+    """The SPDX expression of the License fields that together license one library."""
+    parts = [spdx_license(license) for license in licenses]
+    if [part for part in parts if part.startswith("LicenseRef-")]:
+        return _reference("-and-".join(["-".join(words_of(license)) for license in licenses]))
+    return " AND ".join([_grouped(part, " OR ", len(parts)) for part in parts])
+
+def _library(name, library, license_texts):
+    """A library of its Files paragraphs, with the texts of the licenses they name."""
+    spdx = _joined_spdx(library.licenses)
+    return struct(
+        name = name,
+        license = " and ".join([_grouped(part, " or ", len(library.licenses)) for part in library.licenses]),
+        spdx = spdx,
+        kind = spdx if spdx in _SPDX.values() else None,
+        text = "\n\n".join(library.paragraphs + [
+            license_texts[short_name]
+            for short_name in _short_names(library.licenses)
+            if short_name in license_texts
+        ]) + "\n",
+    )
 
 def bundled_libraries(text):
     """
@@ -149,45 +191,3 @@ def bundled_libraries(text):
         _library(name, library, license_texts)
         for name, library in _files_by_library(paragraphs).items()
     ]
-
-def _files_by_library(paragraphs):
-    """The Files paragraphs but Godot's own by library name: structs of their licenses and texts."""
-    libraries = {}
-    for lines, fields in paragraphs:
-        if "Files" not in fields or fields["Files"] == ["*"]:
-            continue
-        library = libraries.setdefault(_library_name(fields), struct(licenses = [], paragraphs = []))
-        if fields["License"][0] not in library.licenses:
-            library.licenses.append(fields["License"][0])
-        library.paragraphs.append("\n".join(lines))
-    return libraries
-
-def _library(name, library, license_texts):
-    """A library of its Files paragraphs, with the texts of the licenses they name."""
-    spdx = _joined_spdx(library.licenses)
-    return struct(
-        name = name,
-        license = " and ".join([_grouped(part, " or ", len(library.licenses)) for part in library.licenses]),
-        spdx = spdx,
-        kind = spdx if spdx in _SPDX.values() else None,
-        text = "\n\n".join(library.paragraphs + [
-            license_texts[short_name]
-            for short_name in _short_names(library.licenses)
-            if short_name in license_texts
-        ]) + "\n",
-    )
-
-def _grouped(expression, operator, count):
-    """An expression in parentheses where it joins others with AND but holds operator itself."""
-    return "(%s)" % expression if count > 1 and operator in expression else expression
-
-def _short_names(licenses):
-    """The distinct short names of License fields, in order."""
-    return {name: True for license in licenses for name in license_names(license)}.keys()
-
-def _joined_spdx(licenses):
-    """The SPDX expression of the License fields that together license one library."""
-    parts = [spdx_license(license) for license in licenses]
-    if [part for part in parts if part.startswith("LicenseRef-")]:
-        return _reference("-and-".join(["-".join(words_of(license)) for license in licenses]))
-    return " AND ".join([_grouped(part, " OR ", len(parts)) for part in parts])

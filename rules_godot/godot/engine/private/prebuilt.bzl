@@ -15,6 +15,10 @@ PrebuiltArtifactInfo = provider(
     fields = {"digest": "Subresource Integrity digest of the archive the payload came from."},
 )
 
+_BUNDLED_PACKAGES_ATTR = attr.label_list(
+    doc = "The targets that carry the package metadata of the libraries the archive's Godot bundles; they add no files.",
+)
+
 def _editor_impl(ctx):
     out = ctx.actions.declare_file(ctx.label.name)
     ctx.actions.symlink(output = out, target_file = ctx.file.binary, is_executable = True)
@@ -27,10 +31,6 @@ def _editor_impl(ctx):
         files = depset([out], transitive = [files]),
         runfiles = ctx.runfiles(transitive_files = files),
     ), PrebuiltArtifactInfo(digest = ctx.attr.digest)]
-
-_BUNDLED_PACKAGES_ATTR = attr.label_list(
-    doc = "The targets that carry the package metadata of the libraries the archive's Godot bundles; they add no files.",
-)
 
 prebuilt_editor = rule(
     doc = "An archived editor executable with the rest of its archive as runfiles.",

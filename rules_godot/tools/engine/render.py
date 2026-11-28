@@ -486,7 +486,7 @@ _IOS_FRAMEWORKS = [
 
 # The label write_package_metadata (godot/private/supply_chain.bzl) gives the targets that
 # carry the bundled libraries' package metadata.
-BUNDLED_PACKAGES = "//_package_metadata:bundled_packages"
+_BUNDLED_PACKAGES = "//_package_metadata:bundled_packages"
 
 
 def _source_rule(
@@ -508,7 +508,7 @@ def _source_rule(
         "minimum_os": graph["minimum_os"],
         # The targets that carry the package metadata of the libraries Godot bundles, which
         # the recipe's repository declares beside Godot's.
-        "bundled_packages": [BUNDLED_PACKAGES],
+        "bundled_packages": [_BUNDLED_PACKAGES],
         **source_build_facts(args),
     }
     if args.renderers:
