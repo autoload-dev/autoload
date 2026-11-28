@@ -43,10 +43,9 @@ exit "$status"
 
 license_texts_test = rule(
     doc = """
-    Test that each license declares a text, the module's copy of the expected license.
+    Test that each license declares a copy of the expected license as its text.
 
-    A license's text is what a license report embeds; each module's release archive holds it
-    at the module's root.
+    A license report embeds the text; each release archive holds it at the module's root.
     """,
     implementation = _license_texts_test_impl,
     attrs = {

@@ -23,7 +23,7 @@ _archive_versions_test = rule(
 
 def archive_versions_test(name, archives, **kwargs):
     """
-    Test that the URLs each archive is fetched from and its package URL name its version.
+    Test that each archive's URLs and package URL carry its version.
 
     Args:
         name: Name of the test.

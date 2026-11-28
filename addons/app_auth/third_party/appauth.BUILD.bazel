@@ -8,7 +8,8 @@ load("@rules_cc//cc:objc_library.bzl", "objc_library")
 package(default_package_metadata = [":package_metadata"])
 
 # The archive's identity and license, for the SBOM and license tools that read package
-# metadata; its package URL comes from the archive's declaration, as its URLs do.
+# metadata. Its package URL comes from the archive's declaration in archives.bzl, like its
+# URLs.
 package_metadata(
     name = "package_metadata",
     attributes = [":license"],

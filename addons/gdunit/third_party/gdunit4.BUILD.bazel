@@ -1,4 +1,4 @@
-# GdUnit4's sources at a commit: the files of its add-on directory, which
+# GdUnit4's release sources: the files of its add-on directory, which
 # //gdunit assembles into the add-on.
 load("@package_metadata//licenses/rules:license.bzl", "license")
 load("@package_metadata//rules:package_metadata.bzl", "package_metadata")
@@ -10,7 +10,8 @@ package(
 )
 
 # The archive's identity and license, for the SBOM and license tools that read package
-# metadata; its package URL comes from the archive's declaration, as its URLs do.
+# metadata. Its package URL comes from the archive's declaration in archives.bzl, like its
+# URLs.
 package_metadata(
     name = "package_metadata",
     attributes = [":license"],

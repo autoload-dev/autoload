@@ -45,8 +45,8 @@ godot_cpp_bindings = repository_rule(
         ),
         "urls": attr.string_list(
             doc = """
-            Ordered download URLs for the same checksum-pinned archive. Each names
-            `{version}`, which stands for version, so that the package metadata names the
+            Ordered download URLs for the same checksum-pinned archive. Each must contain
+            `{version}`, which version replaces, so that the package metadata names the
             version downloaded.
             """,
             default = ["https://codeload.github.com/godotengine/godot-cpp/tar.gz/{version}"],
@@ -58,7 +58,7 @@ godot_cpp_bindings = repository_rule(
         "strip_prefix": attr.string(
             doc = """
             Directory prefix removed from paths; for archives this must match their
-            top-level directory. `{version}` stands for version.
+            top-level directory. version replaces `{version}` in it.
             """,
             default = "godot-cpp-{version}",
         ),

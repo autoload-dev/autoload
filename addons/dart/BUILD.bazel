@@ -13,8 +13,8 @@ package_metadata(
     visibility = ["//visibility:public"],
 )
 
-# The license with its text, the repository's, which aspect generate copies to the module's
-# root, where its release archive holds it.
+# Its text is the repository's LICENSE, which aspect generate copies to the module's root,
+# so that the release archive holds it.
 license(
     name = "license",
     kind = "@package_metadata//licenses/spdx:MPL-2.0",

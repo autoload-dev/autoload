@@ -1,5 +1,5 @@
-# The module's third-party archives (third_party/archives.bzl) are fetched from URLs that
-# carry the version their package URL names.
+# Each archive of third_party/archives.bzl is fetched from URLs that carry the version of
+# its package URL.
 load("//third_party:archives.bzl", "ARCHIVES")
 load(":archive_versions_test.bzl", "archive_versions_test")
 

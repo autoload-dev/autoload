@@ -134,11 +134,11 @@ SHARED_MODULE_FILES = frozenset(
 )
 
 
-# The repository's license: every module carries a copy at its root, which its release
-# archive holds and its package metadata's license names as its text.
+# The repository's license. Every module carries a copy at its root, which its package
+# metadata names as the license's text.
 LICENSE = "LICENSE"
-# The file in which a module declares its third-party archives. A module that has it shares
-# the template tree archives/: the helper this file loads, and the test of the versions.
+# A module that has this file, which declares its third-party archives, also gets the
+# template tree archives/: the helper the file loads and the test of the versions.
 ARCHIVES = "third_party/archives.bzl"
 
 
@@ -190,9 +190,9 @@ REGISTRY_FILES = (*(relative for _, relative in template_files("bcr")), registry
 def shared_files(directory: str, root: Path = ROOT) -> dict[Path, str]:
     """
     What the generator writes to the shared files of the module addons/<directory>, by path
-    relative to root: the repository's license, the helper of third-party archives and its
-    test only for a module that declares some, and the registry templates only for a module
-    that is released, which has them.
+    relative to root: the repository's license; the helper of third-party archives and its
+    test, for a module that declares archives; and the registry templates, for a module that
+    is released.
     """
     tokens = Names(directory).tokens(bazel_version(root))
     module = module_path(directory)
@@ -242,7 +242,7 @@ def generate(
     written = []
     if not (module / "MODULE.bazel").exists():
         written += copy_tree("module", module, tokens)
-        # The shared files the template tree has not written, such as the license.
+        # The license and the other shared files that the module tree does not hold.
         written += write_files(root, shared_files(directory, root))
         written += copy_tree("examples", root / examples_path(directory), tokens)
         written += declarations.write(root)

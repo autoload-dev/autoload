@@ -38,8 +38,8 @@ py_test(
     deps = ["//tools/addons:new_lib"],
 )
 
-# Every released module carries the repository's license at its root, where its release
-# archive holds it, as the text of its package metadata's license.
+# The license of every released module names as its text a copy of the repository's LICENSE
+# at the module's root, which its release archive holds.
 license_texts_test(
     name = "released_modules_carry_the_license_test",
     size = "small",

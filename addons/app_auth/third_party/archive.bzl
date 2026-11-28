@@ -1,10 +1,10 @@
 """
-The third-party archives a module brings, each declared once by its version.
+Declare a module's third-party archives, each with its version once.
 
-Shared file of the add-on modules with third-party archives (tools/addons/new.py): the
+Shared file of the add-on modules with third-party archives (tools/addons/new.py). The
 module's `third_party/archives.bzl` declares its archives with `github_archive` and exports
-the extension that fetches them, and each archive's build file builds its package metadata
-from the same declaration, so the archive's URLs and its package URL carry one version.
+the extension that fetches them. Each archive's build file takes its package URL from the
+same declaration, so its URLs and its package URL carry one version.
 """
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -15,14 +15,14 @@ _VERSION = "{version}"
 
 def github_archive(*, owner, repository, version, urls, strip_prefix = "", **attrs):
     """
-    The archive of a GitHub project at one version.
+    Declare the archive of a GitHub project at one version.
 
     Args:
         owner: The project's owner on GitHub, such as firebase.
         repository: The project's repository, such as firebase-ios-sdk.
         version: The release tag or commit the archive holds.
-        urls: Its download URLs, where `{version}` stands for version; each one names it.
-        strip_prefix: Its top-level directory, where `{version}` stands for version.
+        urls: The download URLs. Each must contain `{version}`, which version replaces.
+        strip_prefix: The archive's top-level directory; version replaces `{version}`.
         **attrs: The other attributes of its http_archive, such as build_file, with its
             sha256 or integrity, which pins it.
 
@@ -69,7 +69,7 @@ def archives_extension(archives):
         for name, archive in archives.items():
             http_archive(name = name, **archive.attrs)
 
-        # Every archive is pinned by its digest.
+        # github_archive requires a digest of every archive.
         return module_ctx.extension_metadata(reproducible = True)
 
     return module_extension(

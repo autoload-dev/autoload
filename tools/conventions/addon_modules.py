@@ -10,7 +10,7 @@ from tools.conventions.context import BUILD_FILES, Location, Workspace
 from tools.setup.modules import is_addon_module
 
 # The files every module addons/<directory> has: those of the generator's module template and
-# its copy of the repository's license, which the generator writes too.
+# its copy of the repository's license.
 MODULE_FILES = (*(relative for _, relative in template_files("module")), LICENSE)
 
 

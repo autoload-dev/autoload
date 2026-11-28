@@ -5,7 +5,7 @@ Regenerate the repository's generated files.
 |---|---|---|
 | The root module's declarations of the add-on modules, addons.MODULE.bazel | from the modules of addons/ (tools/addons/declarations.py) | by Bazel itself, which fails to load a stale one (see there) |
 | The add-on modules' shared files, such as their .bazelrc, LICENSE and registry templates | from the add-on generator's template (tools/addons/new.py) | by the file lint's convention rule shared-module-files-as-generated |
-| The ruleset's LICENSE, a copy of the repository's | from the repository's LICENSE | by //tools/ci:released_modules_carry_the_license_test, with the add-on modules' |
+| The ruleset's LICENSE, a copy of the repository's | from the repository's LICENSE | by //tools/ci:released_modules_carry_the_license_test, which checks the add-on modules' copies too |
 | The MODULE.bazel.lock of the root module and the ruleset's modules | `bazel mod deps --lockfile_mode=update` | by every CI command, whose `--config=ci` sets `--lockfile_mode=error` (shared.bazelrc) |
 | The lock files of source-built engines, those the root module's `godot_engines.engine` tags name | no: `bazel run @<hub>//:pin` needs an execution platform for each recipe | by a `build_test` of the hub's `:pinned` beside each, which fails on a stale pin |
 
@@ -92,8 +92,9 @@ def unstaged_files() -> list[str]:
 
 def stale_ruleset_license(root: Path) -> dict[Path, str]:
     """
-    The ruleset's copy of the repository's license if it differs, by path relative to root:
-    its release archive and package metadata carry it, as the add-on modules' do theirs.
+    The ruleset's copy of the repository's license if it differs, by path relative to root.
+    Its release archive holds it and its package metadata names it, as the add-on modules'
+    do theirs.
     """
     return new.stale(root, {RULESET / new.LICENSE: (root / new.LICENSE).read_text()})
 

@@ -1135,5 +1135,5 @@ The SBOM reads the graph from analysis and builds none of the application's outp
 your package carry it too. The SBOM names `pkg:bazel/autoload_rules_godot` (MPL-2.0), and
 `pkg:generic/godot@<version>` and `pkg:generic/godot-cpp@<version>` (MIT), whose `checksum`
 names the archive they come from where rules_godot knows its digest. Each license names its
-text, such as the ruleset's `LICENSE`, for a license report to include. Godot is one
+text, such as the ruleset's `LICENSE`, so that a license report can include it. Godot is one
 package: the licenses of the libraries it bundles are not listed apart.
